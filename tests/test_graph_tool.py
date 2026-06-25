@@ -82,5 +82,39 @@ class TestGraphTool(unittest.TestCase):
         self.assertEqual(len(issues["exigence_without_preuve"]), 1)
         self.assertEqual(len(issues["project_without_specification"]), 1)
 
+    def test_visualize_graph_path_traversal(self):
+        import os
+        import tempfile
+        import shutil
+
+        # Use a temporary directory as the base_dir to avoid polluting the workspace
+        test_base_dir = tempfile.mkdtemp()
+
+        try:
+            # Valid path
+            valid_path = "valid_graph.html"
+            result = self.enhancements.visualize_graph(output_file=os.path.join(test_base_dir, valid_path), base_dir=test_base_dir)
+            self.assertTrue(result.endswith(valid_path))
+
+            # Valid path in subdirectory
+            valid_sub_path = "reports/valid_graph.html"
+            os.makedirs(os.path.join(test_base_dir, "reports"), exist_ok=True)
+            result = self.enhancements.visualize_graph(output_file=os.path.join(test_base_dir, valid_sub_path), base_dir=test_base_dir)
+            self.assertTrue(result.endswith(os.path.join("reports", "valid_graph.html")))
+
+            # Invalid path traversal
+            with self.assertRaises(ValueError) as context:
+                # Try to write outside test_base_dir
+                self.enhancements.visualize_graph(output_file=os.path.join(test_base_dir, "../malicious.html"), base_dir=test_base_dir)
+            self.assertIn("Path traversal detected", str(context.exception))
+
+            # Invalid absolute path outside base directory
+            with self.assertRaises(ValueError) as context:
+                self.enhancements.visualize_graph(output_file="/tmp/malicious.html", base_dir=test_base_dir)
+            self.assertIn("Path traversal detected", str(context.exception))
+        finally:
+            # Clean up the temporary directory
+            shutil.rmtree(test_base_dir)
+
 if __name__ == "__main__":
     unittest.main()
