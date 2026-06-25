@@ -31,11 +31,13 @@ from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepositor
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
+from graph_tool.use_cases.storage import StorageHandler
 
 repo = NetworkXGraphRepository()
 commands = CommandHandler(repo, repo)
 queries = QueryHandler(repo)
 enhancements = GraphEnhancements(repo)
+storage = StorageHandler(repo)
 ```
 
 ### 2. Adding Data (Commands)
@@ -55,7 +57,19 @@ You can extract insights from the graph using the `QueryHandler`:
 - `queries.complete_excel_with_graph_info(...)`: Takes an Excel of exigencies and appends connected Phase, Métier, and Preuve data.
 - ...and many more complex transitive queries regarding Specifications and Contracts.
 
-### 4. Enhancements
+### 4. Saving and Loading the Graph
+
+You can save and load the graph using `StorageHandler` to preserve its state without building it from scratch every time. Supported formats are `graphml` (default), `json`, and `pickle`.
+
+```python
+# Save the graph
+storage.save_graph("my_graph.graphml", format="graphml")
+
+# Load the graph
+storage.load_graph("my_graph.graphml", format="graphml")
+```
+
+### 5. Enhancements
 
 - **Graph Visualization:** Export your graph to an interactive HTML file.
   ```python

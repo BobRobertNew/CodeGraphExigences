@@ -1,11 +1,39 @@
 import networkx as nx
 from typing import List, Optional, Any
+import json
+import pickle
 from ..domain.entities import Node, Edge, NodeType
-from ..domain.ports import IGraphCommand, IGraphQuery
+from ..domain.ports import IGraphCommand, IGraphQuery, IGraphStorage
 
-class NetworkXGraphRepository(IGraphCommand, IGraphQuery):
+class NetworkXGraphRepository(IGraphCommand, IGraphQuery, IGraphStorage):
     def __init__(self):
         self.graph = nx.Graph()
+
+    def save_graph(self, filepath: str, format: str = "graphml") -> None:
+        if format == "graphml":
+            nx.write_graphml(self.graph, filepath)
+        elif format == "json":
+            data = nx.node_link_data(self.graph)
+            with open(filepath, 'w') as f:
+                json.dump(data, f)
+        elif format == "pickle":
+            with open(filepath, 'wb') as f:
+                pickle.dump(self.graph, f)
+        else:
+            raise ValueError(f"Unsupported format: {format}")
+
+    def load_graph(self, filepath: str, format: str = "graphml") -> None:
+        if format == "graphml":
+            self.graph = nx.read_graphml(filepath)
+        elif format == "json":
+            with open(filepath, 'r') as f:
+                data = json.load(f)
+            self.graph = nx.node_link_graph(data)
+        elif format == "pickle":
+            with open(filepath, 'rb') as f:
+                self.graph = pickle.load(f)
+        else:
+            raise ValueError(f"Unsupported format: {format}")
 
     def add_node(self, node: Node) -> None:
         if not self.graph.has_node(node.id):

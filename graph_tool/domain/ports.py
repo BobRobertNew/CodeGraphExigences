@@ -18,6 +18,20 @@ class IGraphCommand(ABC):
         pass
 
 
+class IGraphStorage(ABC):
+    """Interface for operations that save and load the graph."""
+
+    @abstractmethod
+    def save_graph(self, filepath: str, format: str = "graphml") -> None:
+        """Saves the graph to a file."""
+        pass
+
+    @abstractmethod
+    def load_graph(self, filepath: str, format: str = "graphml") -> None:
+        """Loads the graph from a file."""
+        pass
+
+
 class IGraphQuery(ABC):
     """Interface for operations that query the graph."""
 
