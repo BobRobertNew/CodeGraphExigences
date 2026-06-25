@@ -1,5 +1,6 @@
 import unittest
-from graph_tool.utils.text_utils import find_best_match
+from unittest.mock import patch
+from graph_tool.utils.text_utils import find_best_match, generate_short_id
 
 class TestTextUtils(unittest.TestCase):
     def test_find_best_match_exact(self):
@@ -37,6 +38,42 @@ class TestTextUtils(unittest.TestCase):
 
     def test_find_best_match_none_choices(self):
         self.assertIsNone(find_best_match("apple", None))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_extractone_returns_none(self, mock_extractOne):
+        mock_extractOne.return_value = None
+        choices = ["apple", "banana"]
+        self.assertIsNone(find_best_match("apple", choices))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_score_exact_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 70)
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("apple", choices, threshold=70), "apple")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_score_below_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 69)
+        choices = ["apple", "banana"]
+        self.assertIsNone(find_best_match("apple", choices, threshold=70))
+
+    def test_generate_short_id_normal(self):
+        # Hash of "hello" is 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+        result = generate_short_id("TEST", "hello")
+        self.assertEqual(result, "TEST-2CF24DBA")
+
+    def test_generate_short_id_empty_text(self):
+        # Hash of "" is e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        result = generate_short_id("PRE", "")
+        self.assertEqual(result, "PRE-E3B0C442")
+
+    def test_generate_short_id_none_text(self):
+        result = generate_short_id("PRE", None)
+        self.assertEqual(result, "PRE-E3B0C442")
+
+    def test_generate_short_id_custom_length(self):
+        result = generate_short_id("PRE", "hello", length=4)
+        self.assertEqual(result, "PRE-2CF2")
 
 if __name__ == "__main__":
     unittest.main()
