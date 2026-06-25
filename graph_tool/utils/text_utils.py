@@ -3,10 +3,10 @@ from thefuzz import process
 from typing import List, Optional, Tuple
 
 def generate_short_id(prefix: str, text: str, length: int = 8) -> str:
-    """Generates a short unique ID based on a prefix and the MD5 hash of the text."""
+    """Generates a short unique ID based on a prefix and the SHA-256 hash of the text."""
     if not text:
         text = ""
-    hash_object = hashlib.md5(text.encode('utf-8'))
+    hash_object = hashlib.sha256(text.encode('utf-8'))
     hash_hex = hash_object.hexdigest()
     return f"{prefix}-{hash_hex[:length].upper()}"
 
