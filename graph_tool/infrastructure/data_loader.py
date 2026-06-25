@@ -20,3 +20,11 @@ def load_data(source: Union[str, pd.DataFrame], **kwargs) -> pd.DataFrame:
 def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """Fills NaN values with empty strings for text processing."""
     return df.fillna("")
+
+def load_and_clean_data(source: Union[str, pd.DataFrame], **kwargs) -> pd.DataFrame:
+    """
+    Loads data and cleans it by filling NaN values with empty strings.
+    Convenience function combining load_data and clean_dataframe.
+    """
+    df = load_data(source, **kwargs)
+    return clean_dataframe(df)
