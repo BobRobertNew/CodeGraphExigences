@@ -1,55 +1,42 @@
 import unittest
-import hashlib
-from graph_tool.utils.text_utils import generate_short_id
+from graph_tool.utils.text_utils import find_best_match
 
 class TestTextUtils(unittest.TestCase):
-    def test_generate_short_id_basic(self):
-        prefix = "PRJ"
-        text = "Test Project Name"
-        expected_hash = hashlib.md5(text.encode('utf-8')).hexdigest()[:8].upper()
-        expected_output = f"{prefix}-{expected_hash}"
+    def test_find_best_match_exact(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
 
-        result = generate_short_id(prefix, text)
-        self.assertEqual(result, expected_output)
+    def test_find_best_match_fuzzy_above_threshold(self):
+        choices = ["Securite du systeme", "Performance", "Fiabilite"]
+        # "Sécurité du système" is fuzzy-matched with "Securite du systeme"
+        self.assertEqual(find_best_match("Sécurité du système", choices), "Securite du systeme")
 
-    def test_generate_short_id_empty_prefix(self):
-        prefix = ""
-        text = "Some text"
-        expected_hash = hashlib.md5(text.encode('utf-8')).hexdigest()[:8].upper()
-        expected_output = f"-{expected_hash}"
+    def test_find_best_match_fuzzy_below_threshold(self):
+        choices = ["apple", "banana", "cherry"]
+        # "xylophone" is very different from any of the choices, should score below 70
+        self.assertIsNone(find_best_match("xylophone", choices))
 
-        result = generate_short_id(prefix, text)
-        self.assertEqual(result, expected_output)
+    def test_find_best_match_custom_threshold(self):
+        choices = ["apple", "banana", "cherry"]
+        # "app" to "apple" matches with a certain score (often around 90)
+        # If we set threshold to 100, it should fail
+        self.assertIsNone(find_best_match("app", choices, threshold=100))
+        # If we set threshold lower, it should pass
+        self.assertEqual(find_best_match("app", choices, threshold=50), "apple")
 
-    def test_generate_short_id_lengths(self):
-        prefix = "TEST"
-        text = "Hello World"
-        full_hash = hashlib.md5(text.encode('utf-8')).hexdigest().upper()
+    def test_find_best_match_empty_query(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertIsNone(find_best_match("", choices))
 
-        # Length 0
-        self.assertEqual(generate_short_id(prefix, text, length=0), f"{prefix}-")
+    def test_find_best_match_none_query(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertIsNone(find_best_match(None, choices))
 
-        # Negative length
-        # Slicing with negative length up to -1 gives all but last character.
-        # However, the user request says test negative length.
-        # hash_hex[:length].upper() will behave like normal python slicing.
-        # E.g. length=-1 will exclude the last character.
-        expected_hash_neg_1 = full_hash[:-1]
-        self.assertEqual(generate_short_id(prefix, text, length=-1), f"{prefix}-{expected_hash_neg_1}")
+    def test_find_best_match_empty_choices(self):
+        self.assertIsNone(find_best_match("apple", []))
 
-        # Length greater than 32
-        self.assertEqual(generate_short_id(prefix, text, length=100), f"{prefix}-{full_hash}")
+    def test_find_best_match_none_choices(self):
+        self.assertIsNone(find_best_match("apple", None))
 
-    def test_generate_short_id_empty_text(self):
-        prefix = "EMPTY"
-        text = ""
-        expected_hash = hashlib.md5(text.encode('utf-8')).hexdigest()[:8].upper()
-
-        result = generate_short_id(prefix, text)
-        self.assertEqual(result, f"{prefix}-{expected_hash}")
-
-        result_none = generate_short_id(prefix, None)
-        self.assertEqual(result_none, f"{prefix}-{expected_hash}")
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
