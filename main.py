@@ -1,0 +1,95 @@
+import pandas as pd
+from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepository
+from graph_tool.use_cases.commands import CommandHandler
+from graph_tool.use_cases.queries import QueryHandler
+from graph_tool.use_cases.enhancements import GraphEnhancements
+
+def main():
+    print("Initializing the Graph Tool...")
+    # 1. Initialize the graph components
+    repo = NetworkXGraphRepository()
+    # Provide the repository as both command and query interface
+    commands = CommandHandler(repo, repo)
+    queries = QueryHandler(repo)
+    enhancements = GraphEnhancements(repo)
+
+    # 2. File paths for the generated dummy data
+    file_project_A = "project_A.xlsx"
+    file_project_B = "project_B.xlsx"
+    file_project_C = "project_C.xlsx"
+    file_rex_A = "rex_project_A.xlsx"
+
+    print("\n--- Loading Data ---")
+
+    # Load exigencies for 3 different projects
+    print("Loading Project A...")
+    commands.add_project_exigences("Project A", file_project_A)
+
+    print("Loading Project B...")
+    commands.add_project_exigences("Project B", file_project_B)
+
+    print("Loading Project C...")
+    commands.add_project_exigences("Project C", file_project_C)
+
+    # Load REX for Project A
+    print("Loading REX for Project A...")
+    commands.add_rex("Project A", file_rex_A)
+
+    print("\nData loaded successfully!")
+
+    print("\n--- Running Queries ---")
+
+    # Question 1: Find similar projects to Project A based on its exigencies
+    # Let's extract the exigencies text from Project A's dataframe for the query
+    df_a = pd.read_excel(file_project_A)
+    exigencies_a = df_a["Exigence"].dropna().tolist()
+
+    print(f"Question: What are the most similar projects to Project A?")
+    similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2)
+    print(f"Answer: {similar_projects}")
+
+    # Question 2: Get useful REX for Project B based on its exigencies
+    df_b = pd.read_excel(file_project_B)
+    exigencies_b = df_b["Exigence"].dropna().tolist()
+
+    print(f"\nQuestion: Are there any useful REX for Project B from similar projects?")
+    # This function uses the find_most_similar_projects internally to find REX
+    useful_rex_ids = queries.get_useful_rex("Project B", exigencies_b)
+    print(f"Answer: Found {len(useful_rex_ids)} relevant REX.")
+    for rex_id in useful_rex_ids:
+        # Retrieve the node to display its details
+        node = repo.get_node(rex_id)
+        if node:
+             print(f"  - REX ID: {rex_id}, Source Exigence: {node.metadata.get('source_text')}")
+
+
+    # Question 3: Complete an Excel with graph info (Testing with Project C's list)
+    print(f"\nQuestion: Can we enrich Project C's data with details from the graph?")
+    enriched_df = queries.complete_excel_with_graph_info(file_project_C)
+    print(f"Answer: Yes. First requirement enriched data:")
+    # Print out the first row's enriched data for demonstration
+    if not enriched_df.empty:
+        first_row = enriched_df.iloc[0]
+        print(f"  Exigence: {first_row.get('Exigence', '')}")
+        print(f"  Phase: {first_row.get('Phase projet (Graph)', '')}")
+        print(f"  Métier: {first_row.get('Métier (Graph)', '')}")
+        print(f"  Preuve: {first_row.get('Preuve de conformité (Graph)', '')}")
+
+    print("\n--- Enhancements ---")
+
+    # Run Graph Integrity Check
+    print("Checking graph integrity...")
+    integrity_issues = enhancements.check_graph_integrity()
+    if integrity_issues:
+        print(f"Found {len(integrity_issues)} potential integrity issues. (These are expected depending on incomplete data links)")
+    else:
+        print("Graph integrity looks perfect.")
+
+    # Visualize the Graph
+    output_html = "graph_visualization.html"
+    print(f"\nGenerating HTML visualization of the graph...")
+    enhancements.visualize_graph(output_html)
+    print(f"Visualization saved to {output_html}. Open it in your browser to view the graph.")
+
+if __name__ == "__main__":
+    main()
