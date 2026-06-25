@@ -3,7 +3,7 @@ from typing import Union
 from ..domain.entities import Node, Edge, NodeType
 from ..domain.ports import IGraphCommand, IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match
-from ..infrastructure.data_loader import load_data, clean_dataframe
+from ..infrastructure.data_loader import load_and_clean_data
 
 class CommandHandler:
     def __init__(self, command_repo: IGraphCommand, query_repo: IGraphQuery):
@@ -16,8 +16,7 @@ class CommandHandler:
         Connects them properly.
         Columns expected: Normes, Exigence, Phase projet, Métier, Preuve de conformité
         """
-        df = load_data(data_source)
-        df = clean_dataframe(df)
+        df = load_and_clean_data(data_source)
 
         # 1. Ensure Project Node exists
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
@@ -84,8 +83,7 @@ class CommandHandler:
         Creates REX nodes linked to a Project and an Exigence.
         Expected column: Exigence (used to find the existing Exigence node via description)
         """
-        df = load_data(data_source)
-        df = clean_dataframe(df)
+        df = load_and_clean_data(data_source)
 
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
@@ -135,8 +133,7 @@ class CommandHandler:
         Creates a Specification node and connects it to a list of Exigence nodes.
         Expected column: Exigence (text)
         """
-        df = load_data(data_source)
-        df = clean_dataframe(df)
+        df = load_and_clean_data(data_source)
 
         spec_node = self.qry.get_node(spec_id)
         if not spec_node:
@@ -177,8 +174,7 @@ class CommandHandler:
         Creates a Contract node and connects it to Document nodes.
         Expected column: Document (name), Description
         """
-        df = load_data(data_source)
-        df = clean_dataframe(df)
+        df = load_and_clean_data(data_source)
 
         contract_node = self.qry.get_node(contract_id)
         if not contract_node:
