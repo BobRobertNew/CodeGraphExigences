@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Union, Set, Tuple
 from ..domain.entities import Node, NodeType
 from ..domain.ports import IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match
-from ..infrastructure.data_loader import load_data, clean_dataframe
+from ..infrastructure.data_loader import load_and_clean_data
 
 class QueryHandler:
     def __init__(self, query_repo: IGraphQuery):
@@ -86,8 +86,8 @@ class QueryHandler:
         Takes an excel/dataframe with an 'Exigence' column. Searches graph, and adds
         'Phase projet', 'Métier', 'Preuve de conformité' columns.
         """
-        df = load_data(data_source)
-        df_clean = clean_dataframe(df)
+        df = load_and_clean_data(data_source)
+        df_clean = df.copy()
 
         phases_list = []
         metiers_list = []
