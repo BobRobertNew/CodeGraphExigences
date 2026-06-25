@@ -8,11 +8,27 @@ class GraphEnhancements:
     def __init__(self, query_repo: IGraphQuery):
         self.qry = query_repo
 
-    def visualize_graph(self, output_file: str = "graph_visualization.html"):
+    def visualize_graph(self, output_file: str = "graph_visualization.html", base_dir: str = None):
         """
         Enhancement 2: Graph Visualization using pyvis.
         Generates an interactive HTML representation of the current graph.
+        Includes path traversal protection.
         """
+        if base_dir is None:
+            base_dir = os.getcwd()
+
+        base_dir_abs = os.path.abspath(base_dir)
+        target_abs = os.path.abspath(output_file)
+
+        try:
+            if os.path.commonpath([base_dir_abs, target_abs]) != base_dir_abs:
+                raise ValueError("Path traversal detected: output file is outside the allowed directory.")
+        except ValueError as e:
+            if "Path traversal detected" in str(e):
+                raise
+            # If commonpath raises ValueError (e.g. on different drives in Windows)
+            raise ValueError("Invalid path provided.") from e
+
         net = Network(height="750px", width="100%", bgcolor="#222222", font_color="white", directed=False)
 
         # Color mapping for different node types
@@ -47,8 +63,8 @@ class GraphEnhancements:
         for edge in edges:
             net.add_edge(edge.source_id, edge.target_id, title=edge.type)
 
-        net.save_graph(output_file)
-        return os.path.abspath(output_file)
+        net.save_graph(target_abs)
+        return target_abs
 
     def check_graph_integrity(self) -> Dict[str, List[str]]:
         """
