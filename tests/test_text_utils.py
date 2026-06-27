@@ -38,5 +38,11 @@ class TestTextUtils(unittest.TestCase):
     def test_find_best_match_none_choices(self):
         self.assertIsNone(find_best_match("apple", None))
 
+    def test_find_best_match_choices_returning_none(self):
+        # Mock process.extractOne to return None to test the if result: condition branch
+        from unittest.mock import patch
+        with patch('graph_tool.utils.text_utils.process.extractOne', return_value=None):
+            self.assertIsNone(find_best_match("apple", ["banana"]))
+
 if __name__ == "__main__":
     unittest.main()
