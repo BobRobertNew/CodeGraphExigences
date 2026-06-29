@@ -85,6 +85,9 @@ class CommandHandler:
         """
         df = load_and_clean_data(data_source)
 
+        if "REX Detail" not in df.columns:
+            raise ValueError("The 'REX Detail' column is missing from the provided data source.")
+
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
             raise ValueError(f"Project '{project_name}' not found. Please add the project first.")
@@ -96,6 +99,7 @@ class CommandHandler:
 
         for idx, row in df.iterrows():
             exigence_text = str(row.get("Exigence", "")).strip()
+            rex_detail_text = str(row.get("REX Detail", "")).strip()
             if not exigence_text:
                 continue
 
@@ -121,7 +125,11 @@ class CommandHandler:
                 rex_id = f"{base_rex_id}-{counter}"
                 counter += 1
 
-            rex_node = Node(id=rex_id, type=NodeType.REX, metadata={"source_text": exigence_text})
+            metadata = {}
+            if rex_detail_text:
+                metadata["description"] = rex_detail_text
+
+            rex_node = Node(id=rex_id, type=NodeType.REX, metadata=metadata)
             self.cmd.add_node(rex_node)
 
             # Link REX to Project and Exigence
