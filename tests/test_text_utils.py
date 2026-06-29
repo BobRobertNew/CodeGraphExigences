@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 from graph_tool.utils.text_utils import find_best_match
 
 class TestTextUtils(unittest.TestCase):
@@ -37,6 +38,14 @@ class TestTextUtils(unittest.TestCase):
 
     def test_find_best_match_none_choices(self):
         self.assertIsNone(find_best_match("apple", None))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_result_none(self, mock_extractOne):
+        # Triggering a case where process.extractOne returns None
+        # by mocking it.
+        # This exercises the falsy `if result:` branch.
+        mock_extractOne.return_value = None
+        self.assertIsNone(find_best_match("apple", ["banana"]))
 
 if __name__ == "__main__":
     unittest.main()
