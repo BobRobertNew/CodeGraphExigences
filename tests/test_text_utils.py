@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from graph_tool.utils.text_utils import find_best_match
+from graph_tool.utils.text_utils import find_best_match, generate_short_id
 
 class TestTextUtils(unittest.TestCase):
     def test_generate_short_id_normal(self):
@@ -64,6 +64,40 @@ class TestTextUtils(unittest.TestCase):
         # This exercises the falsy `if result:` branch.
         mock_extractOne.return_value = None
         self.assertIsNone(find_best_match("apple", ["banana"]))
+
+    def test_find_best_match_case_insensitivity(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match("APPLE", choices), "apple")
+
+    def test_find_best_match_whitespace_handling(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match("  apple  ", choices), "apple")
+        # Just spaces should likely match nothing above 70 threshold for these choices
+        self.assertIsNone(find_best_match("   ", choices))
+
+    def test_find_best_match_empty_elements_in_choices(self):
+        choices = ["", "apple", "banana"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+        # Test empty query with empty element in choices
+        self.assertIsNone(find_best_match("", choices))
+
+    def test_find_best_match_special_characters(self):
+        choices = ["apple!", "@banana", "cherry#"]
+        self.assertEqual(find_best_match("apple!", choices), "apple!")
+        self.assertEqual(find_best_match("@banana", choices), "@banana")
+
+    def test_find_best_match_threshold_bounds(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match("apple", choices, threshold=0), "apple")
+        self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
+        # For non-exact match with threshold 100
+        self.assertIsNone(find_best_match("appl", choices, threshold=100))
+
+    def test_find_best_match_similar_strings(self):
+        choices = ["apple tree", "apple", "green apple"]
+        # Ensure it matches the exact one rather than substrings
+        self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
 
 if __name__ == "__main__":
     unittest.main()
