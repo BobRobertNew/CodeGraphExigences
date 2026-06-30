@@ -49,11 +49,15 @@ class TestGraphTool(unittest.TestCase):
         self.commands.add_project_exigences("Projet Alpha", pd.DataFrame(data))
 
         # Add REX with slightly different text to test fuzzy matching
-        rex_data = {"Exigence": ["Securité systeme"]} # Note the missing accent
+        rex_data = {
+            "Exigence": ["Securité systeme"], # Note the missing accent
+            "REX Detail": ["Test detail"]
+        }
         self.commands.add_rex("Projet Alpha", pd.DataFrame(rex_data))
 
         rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
         self.assertEqual(len(rex_nodes), 1)
+        self.assertEqual(rex_nodes[0].metadata.get("description"), "Test detail")
 
         proj = self.repo.find_node_by_exact_metadata("name", "Projet Alpha", NodeType.PROJET)
         exg = self.repo.get_nodes_by_type(NodeType.EXIGENCE)[0]
