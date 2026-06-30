@@ -3,6 +3,24 @@ from unittest.mock import patch
 from graph_tool.utils.text_utils import find_best_match
 
 class TestTextUtils(unittest.TestCase):
+    def test_generate_short_id_normal(self):
+        result = generate_short_id("REQ", "some text")
+        self.assertTrue(result.startswith("REQ-"))
+        self.assertEqual(len(result), 4 + 8) # prefix + '-' + 8 chars length
+
+    def test_generate_short_id_empty_text(self):
+        result = generate_short_id("REQ", "")
+        self.assertTrue(result.startswith("REQ-"))
+
+    def test_generate_short_id_none_text(self):
+        result = generate_short_id("REQ", None)
+        self.assertTrue(result.startswith("REQ-"))
+
+    def test_generate_short_id_custom_length(self):
+        result = generate_short_id("REQ", "some text", length=12)
+        self.assertTrue(result.startswith("REQ-"))
+        self.assertEqual(len(result), 4 + 12)
+
     def test_find_best_match_exact(self):
         choices = ["apple", "banana", "cherry"]
         self.assertEqual(find_best_match("apple", choices), "apple")
