@@ -5,14 +5,33 @@ from ..domain.entities import NodeType
 from ..domain.ports import IGraphQuery
 
 class GraphEnhancements:
+    """
+    Provides additional features on top of the graph, such as visualization and integrity checking.
+    """
+
     def __init__(self, query_repo: IGraphQuery):
+        """
+        Initializes GraphEnhancements.
+
+        Args:
+            query_repo (IGraphQuery): The repository interface used for reading graph data.
+        """
         self.qry = query_repo
 
     def visualize_graph(self, output_file: str = "graph_visualization.html", base_dir: str = None):
         """
-        Enhancement 2: Graph Visualization using pyvis.
-        Generates an interactive HTML representation of the current graph.
-        Includes path traversal protection.
+        Generates an interactive HTML visualization of the current graph using pyvis.
+        Includes path traversal protection to ensure files are saved in allowed directories.
+
+        Args:
+            output_file (str): The name or path of the HTML file to generate. Defaults to "graph_visualization.html".
+            base_dir (str, optional): The base directory for saving the output. Used for path traversal protection. Defaults to current working directory.
+
+        Returns:
+            str: The absolute path to the generated HTML file.
+
+        Raises:
+            ValueError: If a path traversal attempt is detected or if an invalid path is provided.
         """
         if base_dir is None:
             base_dir = os.getcwd()
@@ -68,10 +87,14 @@ class GraphEnhancements:
 
     def check_graph_integrity(self) -> Dict[str, List[str]]:
         """
-        Enhancement 3: Integrity/Orphan Checker.
-        Returns a dictionary containing IDs of nodes that might be dangling or incomplete.
-        - Exigences without a Preuve
-        - Projects without any Specifications (transitive via Exigence)
+        Checks the integrity of the graph and identifies potentially dangling or incomplete nodes.
+        Specifically, it checks for:
+        - Requirements (Exigences) without a Proof (Preuve).
+        - Projects without any Specifications (checked transitively via Exigence).
+
+        Returns:
+            Dict[str, List[str]]: A dictionary containing lists of node IDs that failed integrity checks.
+                Keys include 'exigence_without_preuve' and 'project_without_specification'.
         """
         issues = {
             "exigence_without_preuve": [],
