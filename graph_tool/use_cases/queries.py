@@ -6,11 +6,30 @@ from ..utils.text_utils import generate_short_id, find_best_match
 from ..infrastructure.data_loader import load_and_clean_data
 
 class QueryHandler:
+    """
+    Handles graph querying operations, extracting insights from the graph data.
+    """
+
     def __init__(self, query_repo: IGraphQuery):
+        """
+        Initializes the QueryHandler.
+
+        Args:
+            query_repo (IGraphQuery): The repository interface for reading from the graph.
+        """
         self.qry = query_repo
 
     def _get_exigence_nodes_from_texts(self, texts: List[str]) -> List[Node]:
-        """Helper to map a list of text to existing Exigence nodes using exact/fuzzy match."""
+        """
+        Helper method to map a list of requirement texts to existing Exigence nodes
+        using exact or fuzzy matching.
+
+        Args:
+            texts (List[str]): List of requirement texts to match.
+
+        Returns:
+            List[Node]: A deduplicated list of matching Exigence nodes.
+        """
         all_exigences = self.qry.get_nodes_by_type(NodeType.EXIGENCE)
         exigence_descriptions = {exg.metadata.get("description", ""): exg for exg in all_exigences}
         desc_list = list(exigence_descriptions.keys())
@@ -31,7 +50,15 @@ class QueryHandler:
         """
         Given a project name and a list of exigencies text, finds the `top_k` projects
         that share the most exigencies with the provided list.
-        Excludes the target_project_name from the results.
+        Excludes the target project from the results.
+
+        Args:
+            target_project_name (str): The name of the baseline project to exclude.
+            exigencies_texts (List[str]): A list of requirement texts to compare against.
+            top_k (int): The maximum number of similar projects to return. Defaults to 1.
+
+        Returns:
+            List[str]: A list containing the names of the most similar projects.
         """
         target_exigence_nodes = self._get_exigence_nodes_from_texts(exigencies_texts)
         target_exigence_ids = {node.id for node in target_exigence_nodes}
@@ -56,9 +83,16 @@ class QueryHandler:
 
     def get_useful_rex(self, project_name: str, exigencies_texts: List[str]) -> List[str]:
         """
-        Given a project name and a list of exigencies text, extracts related REX nodes
-        from the 2 or 3 most similar projects.
+        Given a project name and a list of exigencies text, extracts related REX (Return on Experience)
+        nodes from the up to 3 most similar projects.
         Only extracts REX that are associated with the provided exigencies.
+
+        Args:
+            project_name (str): The name of the baseline project.
+            exigencies_texts (List[str]): A list of requirement texts.
+
+        Returns:
+            List[str]: A list of IDs for the useful REX nodes.
         """
         similar_projects = self.find_most_similar_projects(project_name, exigencies_texts, top_k=3)
         useful_rex = set()
@@ -83,8 +117,14 @@ class QueryHandler:
 
     def complete_excel_with_graph_info(self, data_source: Union[str, pd.DataFrame]) -> pd.DataFrame:
         """
-        Takes an excel/dataframe with an 'Exigence' column. Searches graph, and adds
-        'Phase projet', 'Métier', 'Preuve de conformité' columns.
+        Takes an excel/dataframe with an 'Exigence' column, searches the graph, and appends
+        'Phase projet', 'Métier', and 'Preuve de conformité' information connected to each exigence.
+
+        Args:
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+
+        Returns:
+            pd.DataFrame: A new DataFrame with the appended graph information.
         """
         df = load_and_clean_data(data_source)
         df_clean = df.copy()
@@ -129,6 +169,13 @@ class QueryHandler:
         """
         Helper returning a list of tuples: (Exigence Node, boolean indicating if its Preuve is linked to given contracts)
         Strict traversal: Exigence -> Preuve -> Document -> Contrat
+
+        Args:
+            spec_ids (List[str]): List of specification IDs.
+            contract_ids (List[str]): List of contract IDs.
+
+        Returns:
+            List[Tuple[Node, bool]]: List of tuples containing the Exigence node and a boolean flag.
         """
         result = []
         target_contract_ids = set(contract_ids)
@@ -156,17 +203,43 @@ class QueryHandler:
         return result
 
     def get_exigencies_by_specs_and_contracts_linked(self, spec_ids: List[str], contract_ids: List[str]) -> List[str]:
-        """Returns Exigence descriptions connected to specs AND whose Preuves are linked to the contracts."""
+        """
+        Returns Exigence descriptions connected to given specifications AND whose Preuves are linked to the given contracts.
+
+        Args:
+            spec_ids (List[str]): List of specification IDs.
+            contract_ids (List[str]): List of contract IDs.
+
+        Returns:
+            List[str]: List of exigence descriptions.
+        """
         data = self._get_spec_contract_exigences(spec_ids, contract_ids)
         return list({exg.metadata.get("description", "") for exg, is_linked in data if is_linked})
 
     def get_exigencies_by_specs_and_contracts_not_linked(self, spec_ids: List[str], contract_ids: List[str]) -> List[str]:
-        """Returns Exigence descriptions connected to specs AND whose Preuves are NOT linked to the contracts."""
+        """
+        Returns Exigence descriptions connected to given specifications AND whose Preuves are NOT linked to the given contracts.
+
+        Args:
+            spec_ids (List[str]): List of specification IDs.
+            contract_ids (List[str]): List of contract IDs.
+
+        Returns:
+            List[str]: List of exigence descriptions.
+        """
         data = self._get_spec_contract_exigences(spec_ids, contract_ids)
         return list({exg.metadata.get("description", "") for exg, is_linked in data if not is_linked})
 
     def get_exigencies_linked_to_multiple_specs(self, spec_ids: List[str]) -> List[str]:
-        """Returns exigencies that are connected to AT LEAST TWO different specifications."""
+        """
+        Returns exigencies that are connected to AT LEAST TWO different specifications from the provided list.
+
+        Args:
+            spec_ids (List[str]): List of specification IDs to check against.
+
+        Returns:
+            List[str]: List of exigence descriptions linked to multiple specs.
+        """
         exigence_spec_count = {}
         for s_id in spec_ids:
             exigences = self.qry.get_neighbors(s_id, NodeType.EXIGENCE)
@@ -177,7 +250,16 @@ class QueryHandler:
         return [self.qry.get_node(e_id).metadata.get("description", "") for e_id in multi_spec_exgs]
 
     def get_specifications_for_project(self, project_name: str) -> List[str]:
-        """Given a project name, returns the list of specification names related to it."""
+        """
+        Given a project name, returns the list of specification names related to it.
+        Relation: Project -> Exigence <- Specification
+
+        Args:
+            project_name (str): The name of the project.
+
+        Returns:
+            List[str]: List of specification names.
+        """
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
             return []
@@ -195,7 +277,13 @@ class QueryHandler:
         """
         Given a project name, returns the list of contract names related to it.
         Relation: Project -> Exigence -> Preuve -> Document -> Contract.
-        Strict traversal to avoid merging via shared nodes (like Loi).
+        Strict traversal is used to avoid incorrectly merging paths via shared nodes (like Loi).
+
+        Args:
+            project_name (str): The name of the project.
+
+        Returns:
+            List[str]: List of linked contract names.
         """
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
@@ -216,8 +304,14 @@ class QueryHandler:
 
     def get_lois_from_preuves(self, preuve_texts: List[str]) -> List[str]:
         """
-        From a list of Preuve texts, returns the list of Loi names related.
-        Preuve -> Exigence -> Loi.
+        From a list of Preuve texts, returns the list of Loi names related to them.
+        Relation: Preuve -> Exigence -> Loi.
+
+        Args:
+            preuve_texts (List[str]): A list of Proof (Preuve) descriptions/texts.
+
+        Returns:
+            List[str]: A deduplicated list of related Law (Loi) names.
         """
         all_preuves = self.qry.get_nodes_by_type(NodeType.PREUVE)
         preuve_descriptions = {p.metadata.get("description", ""): p for p in all_preuves}

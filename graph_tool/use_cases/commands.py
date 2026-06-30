@@ -6,15 +6,38 @@ from ..utils.text_utils import generate_short_id, find_best_match
 from ..infrastructure.data_loader import load_and_clean_data
 
 class CommandHandler:
+    """
+    Handles operations that modify the graph, adding nodes and edges.
+    """
+
     def __init__(self, command_repo: IGraphCommand, query_repo: IGraphQuery):
+        """
+        Initializes the CommandHandler.
+
+        Args:
+            command_repo (IGraphCommand): The repository interface for writing to the graph.
+            query_repo (IGraphQuery): The repository interface for reading from the graph.
+        """
         self.cmd = command_repo
         self.qry = query_repo
 
     def add_project_exigences(self, project_name: str, data_source: Union[str, pd.DataFrame]):
         """
-        Creates nodes: Projet, Loi, Exigence, Phase projet, Métier, Preuve
-        Connects them properly.
-        Columns expected: Normes, Exigence, Phase projet, Métier, Preuve de conformité
+        Adds project requirements (exigences) to the graph.
+
+        Creates nodes for Project (Projet), Law (Loi), Requirement (Exigence),
+        Phase (Phase projet), Job/Trade (Métier), and Proof (Preuve) and connects them properly.
+
+        Columns expected in the data source:
+        - Normes
+        - Exigence
+        - Phase projet
+        - Métier
+        - Preuve de conformité
+
+        Args:
+            project_name (str): The name of the project.
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
         """
         df = load_and_clean_data(data_source)
 
@@ -80,10 +103,22 @@ class CommandHandler:
 
     def add_rex(self, project_name: str, data_source: Union[str, pd.DataFrame]):
         """
-        Creates REX nodes linked to a Project and an Exigence.
-        Expected column: Exigence (used to find the existing Exigence node via description)
+        Creates Return on Experience (REX) nodes linked to a Project and an Exigence.
+
+        Expected column in the data source:
+        - Exigence (used to find the existing Exigence node via exact or fuzzy description matching)
+
+        Args:
+            project_name (str): The name of the project.
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+
+        Raises:
+            ValueError: If the project is not found in the graph or if an Exigence cannot be matched.
         """
         df = load_and_clean_data(data_source)
+
+        if "REX Detail" not in df.columns:
+            raise ValueError("The 'REX Detail' column is missing from the provided data source.")
 
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
@@ -96,6 +131,7 @@ class CommandHandler:
 
         for idx, row in df.iterrows():
             exigence_text = str(row.get("Exigence", "")).strip()
+            rex_detail_text = str(row.get("REX Detail", "")).strip()
             if not exigence_text:
                 continue
 
@@ -121,7 +157,11 @@ class CommandHandler:
                 rex_id = f"{base_rex_id}-{counter}"
                 counter += 1
 
-            rex_node = Node(id=rex_id, type=NodeType.REX, metadata={"source_text": exigence_text})
+            metadata = {}
+            if rex_detail_text:
+                metadata["description"] = rex_detail_text
+
+            rex_node = Node(id=rex_id, type=NodeType.REX, metadata=metadata)
             self.cmd.add_node(rex_node)
 
             # Link REX to Project and Exigence
@@ -131,7 +171,14 @@ class CommandHandler:
     def add_specification(self, spec_id: str, spec_name: str, data_source: Union[str, pd.DataFrame]):
         """
         Creates a Specification node and connects it to a list of Exigence nodes.
-        Expected column: Exigence (text)
+
+        Expected column in the data source:
+        - Exigence (text)
+
+        Args:
+            spec_id (str): The unique ID of the specification.
+            spec_name (str): The name of the specification.
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
         """
         df = load_and_clean_data(data_source)
 
@@ -172,7 +219,15 @@ class CommandHandler:
     def add_contract(self, contract_id: str, contract_name: str, data_source: Union[str, pd.DataFrame]):
         """
         Creates a Contract node and connects it to Document nodes.
-        Expected column: Document (name), Description
+
+        Expected columns in the data source:
+        - Document (name)
+        - Description
+
+        Args:
+            contract_id (str): The unique ID of the contract.
+            contract_name (str): The name of the contract.
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
         """
         df = load_and_clean_data(data_source)
 
