@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from graph_tool.utils.text_utils import find_best_match
+from graph_tool.utils.text_utils import find_best_match, generate_short_id
 
 class TestTextUtils(unittest.TestCase):
     def test_generate_short_id_normal(self):
@@ -64,6 +64,35 @@ class TestTextUtils(unittest.TestCase):
         # This exercises the falsy `if result:` branch.
         mock_extractOne.return_value = None
         self.assertIsNone(find_best_match("apple", ["banana"]))
+
+    def test_find_best_match_case_insensitive(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match("APPLE", choices), "apple")
+
+    def test_find_best_match_whitespace_query(self):
+        choices = ["apple", "banana", "cherry"]
+        # thefuzz may warn and return a 0 score for whitespace queries
+        self.assertIsNone(find_best_match("   ", choices))
+
+    def test_find_best_match_choices_with_empty_strings(self):
+        choices = ["", "  ", "apple"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+    def test_find_best_match_threshold_zero(self):
+        choices = ["banana", "cherry"]
+        # Even with a 0 score, threshold=0 should accept the first choice
+        # However, thefuzz can still match something or nothing based on text
+        # If it returns a result with a score of 0, threshold=0 should accept it.
+        match = find_best_match("xylophone", choices, threshold=0)
+        self.assertIn(match, choices)
+
+    def test_find_best_match_identical_scores(self):
+        # "ab" and "ac" against "a" will both score similarly.
+        # It should just return the first one extractOne returns.
+        choices = ["apple pie", "apple tart"]
+        # query "apple"
+        match = find_best_match("apple", choices)
+        self.assertIn(match, choices)
 
 if __name__ == "__main__":
     unittest.main()
