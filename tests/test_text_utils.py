@@ -65,34 +65,39 @@ class TestTextUtils(unittest.TestCase):
         mock_extractOne.return_value = None
         self.assertIsNone(find_best_match("apple", ["banana"]))
 
-    def test_find_best_match_case_insensitive(self):
+    def test_find_best_match_case_insensitivity(self):
         choices = ["apple", "banana", "cherry"]
         self.assertEqual(find_best_match("APPLE", choices), "apple")
 
-    def test_find_best_match_whitespace_query(self):
+    def test_find_best_match_whitespace_handling(self):
         choices = ["apple", "banana", "cherry"]
-        # thefuzz may warn and return a 0 score for whitespace queries
+        self.assertEqual(find_best_match("  apple  ", choices), "apple")
+        # Just spaces should likely match nothing above 70 threshold for these choices
         self.assertIsNone(find_best_match("   ", choices))
 
-    def test_find_best_match_choices_with_empty_strings(self):
-        choices = ["", "  ", "apple"]
+    def test_find_best_match_empty_elements_in_choices(self):
+        choices = ["", "apple", "banana"]
         self.assertEqual(find_best_match("apple", choices), "apple")
 
-    def test_find_best_match_threshold_zero(self):
-        choices = ["banana", "cherry"]
-        # Even with a 0 score, threshold=0 should accept the first choice
-        # However, thefuzz can still match something or nothing based on text
-        # If it returns a result with a score of 0, threshold=0 should accept it.
-        match = find_best_match("xylophone", choices, threshold=0)
-        self.assertIn(match, choices)
+        # Test empty query with empty element in choices
+        self.assertIsNone(find_best_match("", choices))
 
-    def test_find_best_match_identical_scores(self):
-        # "ab" and "ac" against "a" will both score similarly.
-        # It should just return the first one extractOne returns.
-        choices = ["apple pie", "apple tart"]
-        # query "apple"
-        match = find_best_match("apple", choices)
-        self.assertIn(match, choices)
+    def test_find_best_match_special_characters(self):
+        choices = ["apple!", "@banana", "cherry#"]
+        self.assertEqual(find_best_match("apple!", choices), "apple!")
+        self.assertEqual(find_best_match("@banana", choices), "@banana")
+
+    def test_find_best_match_threshold_bounds(self):
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match("apple", choices, threshold=0), "apple")
+        self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
+        # For non-exact match with threshold 100
+        self.assertIsNone(find_best_match("appl", choices, threshold=100))
+
+    def test_find_best_match_similar_strings(self):
+        choices = ["apple tree", "apple", "green apple"]
+        # Ensure it matches the exact one rather than substrings
+        self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
 
 if __name__ == "__main__":
     unittest.main()
