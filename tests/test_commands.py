@@ -66,5 +66,67 @@ class TestCommands(unittest.TestCase):
         exg_nodes = self.repo.get_nodes_by_type(NodeType.EXIGENCE)
         self.assertEqual(len(exg_nodes), 2)
 
+    def test_add_rex_legacy_columns(self):
+        # Initial project and exigences
+        self.commands.add_project_exigences("ProjA", pd.DataFrame({
+            "Exigence": ["Exg1"]
+        }))
+
+        # Add REX using legacy column names
+        data = {
+            "Exigence": ["Exg1"],
+            "REX Detail": ["This is a legacy REX detail"]
+        }
+        df = pd.DataFrame(data)
+
+        self.commands.add_rex("ProjA", df)
+
+        rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
+        self.assertEqual(len(rex_nodes), 1)
+        self.assertEqual(rex_nodes[0].metadata["description"], "This is a legacy REX detail")
+
+        edges = self.repo.get_all_edges()
+        linked = [(e.source_id, e.target_id) for e in edges if e.target_id.startswith("REX") or e.source_id.startswith("REX")]
+        self.assertEqual(len(linked), 2)  # Should link to project and exigence
+
+    def test_add_rex_new_columns_and_loader(self):
+        # Initial project and exigences
+        self.commands.add_project_exigences("ProjB", pd.DataFrame({
+            "Exigence": ["Exg2"]
+        }))
+
+        # Simulating the loader behavior with a custom function
+        def mock_loader(data_source):
+            return data_source
+
+        data = {
+            "Exigences": ["Exg2"],
+            "Commentaire general": ["This is a new format REX detail"]
+        }
+        df = pd.DataFrame(data)
+
+        self.commands.add_rex("ProjB", df, loader=mock_loader)
+
+        rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
+        self.assertEqual(len(rex_nodes), 1)
+        self.assertEqual(rex_nodes[0].metadata["description"], "This is a new format REX detail")
+
+    def test_add_rex_missing_rex_columns(self):
+        # Initial project and exigences
+        self.commands.add_project_exigences("ProjC", pd.DataFrame({
+            "Exigence": ["Exg3"]
+        }))
+
+        data = {
+            "Exigence": ["Exg3"],
+            "SomeOtherColumn": ["Value"]
+        }
+        df = pd.DataFrame(data)
+
+        with self.assertRaises(ValueError) as context:
+            self.commands.add_rex("ProjC", df)
+
+        self.assertIn("Neither 'REX Detail' nor 'Commentaire general' column is found", str(context.exception))
+
 if __name__ == '__main__':
     unittest.main()
