@@ -1,3 +1,4 @@
+import warnings
 import pandas as pd
 from typing import Union, List, Callable
 from ..domain.entities import Node, Edge, NodeType
@@ -41,6 +42,17 @@ class CommandHandler:
         df = loader(data_source)
         if loader != load_and_clean_data:
             df = clean_dataframe(df)
+
+        if "Etat de conformité" in df.columns:
+            mask_contains = df["Etat de conformité"].astype(str).str.contains("Surveillance conformité", case=False, na=False)
+            mask_exact = df["Etat de conformité"].astype(str).str.contains("Surveillance conformité", case=True, na=False)
+
+            if (mask_contains & ~mask_exact).any():
+                warnings.warn("Some rows matched 'Surveillance conformité' with different casing.")
+
+            df = df[mask_contains].copy()
+        else:
+            warnings.warn("Column 'Etat de conformité' not found. Proceeding without filtering.")
 
         # 1. Ensure Project Node exists
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
