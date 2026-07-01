@@ -17,6 +17,8 @@ class NodeType(Enum):
     SITE = "Site"
     DOCUMENT = "Document"
     PREUVE = "Preuve de conformité"
+    ARTICLE = "Article"
+    SOUS_ARTICLE = "Sous Article"
 
 @dataclass
 class Node:
