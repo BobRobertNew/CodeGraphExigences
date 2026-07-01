@@ -1,9 +1,10 @@
 import pandas as pd
-from typing import Union
+from typing import Union, List, Callable
 from ..domain.entities import Node, Edge, NodeType
 from ..domain.ports import IGraphCommand, IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match
-from ..infrastructure.data_loader import load_and_clean_data
+from ..infrastructure.data_loader import load_and_clean_data, clean_dataframe
+from .extractors import IExtractionStep, LegacyExigenceExtractionStep
 
 class CommandHandler:
     """
@@ -21,25 +22,25 @@ class CommandHandler:
         self.cmd = command_repo
         self.qry = query_repo
 
-    def add_project_exigences(self, project_name: str, data_source: Union[str, pd.DataFrame]):
+    def add_project_exigences(
+        self,
+        project_name: str,
+        data_source: Union[str, pd.DataFrame],
+        loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
+        steps: List[IExtractionStep] = None
+    ):
         """
         Adds project requirements (exigences) to the graph.
-
-        Creates nodes for Project (Projet), Law (Loi), Requirement (Exigence),
-        Phase (Phase projet), Job/Trade (Métier), and Proof (Preuve) and connects them properly.
-
-        Columns expected in the data source:
-        - Normes
-        - Exigence
-        - Phase projet
-        - Métier
-        - Preuve de conformité
 
         Args:
             project_name (str): The name of the project.
             data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+            loader (Callable): Function to load the data_source into a DataFrame.
+            steps (List[IExtractionStep]): List of extraction steps to apply. If None, uses legacy logic.
         """
-        df = load_and_clean_data(data_source)
+        df = loader(data_source)
+        if loader != load_and_clean_data:
+            df = clean_dataframe(df)
 
         # 1. Ensure Project Node exists
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
@@ -47,59 +48,12 @@ class CommandHandler:
             proj_node = Node(id=f"PROJ-{project_name}", type=NodeType.PROJET, metadata={"name": project_name})
             self.cmd.add_node(proj_node)
 
-        for _, row in df.iterrows():
-            loi_name = str(row.get("Normes", "")).strip()
-            exigence_text = str(row.get("Exigence", "")).strip()
-            phase_name = str(row.get("Phase projet", "")).strip()
-            metier_name = str(row.get("Métier", "")).strip()
-            preuve_text = str(row.get("Preuve de conformité", "")).strip()
+        # 2. Run extraction steps
+        if steps is None:
+            steps = [LegacyExigenceExtractionStep()]
 
-            if not exigence_text:
-                continue
-
-            # Exigence Node
-            exg_id = generate_short_id("EXG", exigence_text)
-            exg_node = self.qry.get_node(exg_id)
-            if not exg_node:
-                exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
-                self.cmd.add_node(exg_node)
-
-            # Link Project -> Exigence
-            self.cmd.add_edge(Edge(proj_node.id, exg_node.id))
-
-            # Loi Node
-            if loi_name:
-                loi_node = self.qry.find_node_by_exact_metadata("name", loi_name, NodeType.LOI)
-                if not loi_node:
-                    loi_node = Node(id=f"LOI-{loi_name}", type=NodeType.LOI, metadata={"name": loi_name})
-                    self.cmd.add_node(loi_node)
-                # Link Exigence -> Loi
-                self.cmd.add_edge(Edge(exg_node.id, loi_node.id))
-
-            # Phase Projet Node
-            if phase_name:
-                phase_node = self.qry.find_node_by_exact_metadata("name", phase_name, NodeType.PHASE_PROJET)
-                if not phase_node:
-                    phase_node = Node(id=f"PHASE-{phase_name}", type=NodeType.PHASE_PROJET, metadata={"name": phase_name})
-                    self.cmd.add_node(phase_node)
-                self.cmd.add_edge(Edge(exg_node.id, phase_node.id))
-
-            # Métier Node
-            if metier_name:
-                metier_node = self.qry.find_node_by_exact_metadata("name", metier_name, NodeType.METIER)
-                if not metier_node:
-                    metier_node = Node(id=f"METIER-{metier_name}", type=NodeType.METIER, metadata={"name": metier_name})
-                    self.cmd.add_node(metier_node)
-                self.cmd.add_edge(Edge(exg_node.id, metier_node.id))
-
-            # Preuve de conformité Node
-            if preuve_text:
-                preuve_id = generate_short_id("PRV", preuve_text)
-                preuve_node = self.qry.get_node(preuve_id)
-                if not preuve_node:
-                    preuve_node = Node(id=preuve_id, type=NodeType.PREUVE, metadata={"description": preuve_text})
-                    self.cmd.add_node(preuve_node)
-                self.cmd.add_edge(Edge(exg_node.id, preuve_node.id))
+        for step in steps:
+            step.execute(df, proj_node, self.cmd, self.qry)
 
     def add_rex(self, project_name: str, data_source: Union[str, pd.DataFrame]):
         """

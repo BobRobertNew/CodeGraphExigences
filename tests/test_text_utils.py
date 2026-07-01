@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from graph_tool.utils.text_utils import find_best_match
+from graph_tool.utils.text_utils import find_best_match, generate_short_id
 
 class TestTextUtils(unittest.TestCase):
     def test_generate_short_id_normal(self):

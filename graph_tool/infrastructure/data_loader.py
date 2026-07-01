@@ -40,6 +40,50 @@ def load_data(source: Union[str, pd.DataFrame], safe_base_dir: str = None, **kwa
     else:
         raise ValueError("Source must be a file path string or a pandas DataFrame.")
 
+def load_excel_with_2row_header(filepath: str) -> pd.DataFrame:
+    """
+    Load an Excel file where:
+      - rows 0 and 1 form the header
+      - merged cells may exist in these rows
+    """
+
+    # Read everything as raw data
+    raw = pd.read_excel(filepath, header=None)
+
+    # Recover merged cells in the first 2 rows
+    header_rows = raw.iloc[:2].ffill(axis=1)
+
+    # Build column names
+    columns = []
+
+    for col in range(header_rows.shape[1]):
+        level1 = str(header_rows.iloc[0, col]).strip()
+        level2 = str(header_rows.iloc[1, col]).strip()
+
+        if level1 == level2:
+            column_name = level1
+        elif level2.lower() == "nan":
+            column_name = level1
+        elif level1.lower() == "nan":
+            column_name = level2
+        else:
+            column_name = f"{level1}_{level2}"
+
+        column_name = (
+            column_name
+            .replace("_Line", "")
+        )
+
+        columns.append(column_name)
+
+    # Extract data
+    df = raw.iloc[2:].copy()
+    df.columns = columns
+    # reset index just in case
+    df = df.reset_index(drop=True)
+
+    return df
+
 def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
     Cleans a pandas DataFrame by filling NaN values with empty strings for text processing.
