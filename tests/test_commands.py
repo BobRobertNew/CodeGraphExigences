@@ -13,7 +13,7 @@ class TestCommands(unittest.TestCase):
     def test_add_project_exigences_filter_exact_match(self):
         data = {
             "Exigence": ["Exigence 1", "Exigence 2", "Exigence 3"],
-            "Etat de conformité": ["Surveillance conformité", "Other", "Surveillance conformité"]
+            "Etat de Conformité": ["Surveillance conformité", "Other", "Surveillance conformité"]
         }
         df = pd.DataFrame(data)
 
@@ -33,7 +33,7 @@ class TestCommands(unittest.TestCase):
     def test_add_project_exigences_filter_case_insensitive_warning(self):
         data = {
             "Exigence": ["Exigence 1", "Exigence 2"],
-            "Etat de conformité": ["surveillance conformité", "Other"]
+            "Etat de Conformité": ["surveillance conformité", "Other"]
         }
         df = pd.DataFrame(data)
 
@@ -61,7 +61,7 @@ class TestCommands(unittest.TestCase):
 
             # Check warning
             self.assertEqual(len(w), 1)
-            self.assertIn("Column 'Etat de conformité' not found. Proceeding without filtering.", str(w[0].message))
+            self.assertIn("Column 'Etat de Conformité' not found. Proceeding without filtering.", str(w[0].message))
 
         exg_nodes = self.repo.get_nodes_by_type(NodeType.EXIGENCE)
         self.assertEqual(len(exg_nodes), 2)
