@@ -78,6 +78,50 @@ class TestGraphTool(unittest.TestCase):
         similar = self.queries.find_most_similar_projects("P1", ["Exigence A"], top_k=1)
         self.assertEqual(similar, ["P2"])
 
+    def test_queries_similar_projects_exact_match(self):
+        data1 = {"Exigence": ["Exigence Alpha", "Exigence Beta"]}
+        data2 = {"Exigence": ["Exigence Alpha", "Exigence Gamma"]}
+
+        self.commands.add_project_exigences("P1", pd.DataFrame(data1))
+        self.commands.add_project_exigences("P2", pd.DataFrame(data2))
+
+        # Test exact match True, should find P2 with exact string
+        similar_exact = self.queries.find_most_similar_projects("P1", ["Exigence Alpha"], top_k=1, exact_match=True)
+        self.assertEqual(similar_exact, ["P2"])
+
+        # Test exact match True with fuzzy string (should fail to find P2)
+        similar_exact_fuzzy = self.queries.find_most_similar_projects("P1", ["Exigence Alph"], top_k=1, exact_match=True)
+        self.assertEqual(similar_exact_fuzzy, [])
+
+        # Test exact match False with fuzzy string (should find P2 using fuzzy match)
+        similar_fuzzy = self.queries.find_most_similar_projects("P1", ["Exigence Alph"], top_k=1, exact_match=False)
+        self.assertEqual(similar_fuzzy, ["P2"])
+
+    def test_get_useful_rex_exact_match(self):
+        # Create base
+        data1 = {"Exigence": ["Sécurité du système", "Exigence Z"]}
+        data2 = {"Exigence": ["Sécurité du système", "Exigence Y"]}
+        self.commands.add_project_exigences("P1", pd.DataFrame(data1))
+        self.commands.add_project_exigences("P2", pd.DataFrame(data2))
+
+        rex_data = {
+            "Exigence": ["Sécurité du système"],
+            "REX Detail": ["Detail REX 1"]
+        }
+        self.commands.add_rex("P2", pd.DataFrame(rex_data))
+
+        # Test get_useful_rex exact match with correct string
+        useful_rex_exact = self.queries.get_useful_rex("P1", ["Sécurité du système"], exact_match=True)
+        self.assertEqual(len(useful_rex_exact), 1)
+
+        # Test get_useful_rex exact match with fuzzy string (should fail)
+        useful_rex_exact_fuzzy = self.queries.get_useful_rex("P1", ["Securite du systeme"], exact_match=True)
+        self.assertEqual(len(useful_rex_exact_fuzzy), 0)
+
+        # Test get_useful_rex fuzzy match with fuzzy string (should find)
+        useful_rex_fuzzy = self.queries.get_useful_rex("P1", ["Securite du systeme"], exact_match=False)
+        self.assertEqual(len(useful_rex_fuzzy), 1)
+
     def test_enhancement_integrity(self):
         data = {"Exigence": ["Exigence Sans Preuve"], "Preuve de conformité": [""]}
         self.commands.add_project_exigences("P1", pd.DataFrame(data))
