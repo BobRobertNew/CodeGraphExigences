@@ -43,9 +43,9 @@ class CommandHandler:
         if loader != load_and_clean_data:
             df = clean_dataframe(df)
 
-        if "Etat de conformité" in df.columns:
-            mask_contains = df["Etat de conformité"].astype(str).str.contains("Surveillance conformité", case=False, na=False)
-            mask_exact = df["Etat de conformité"].astype(str).str.contains("Surveillance conformité", case=True, na=False)
+        if "Etat de Conformité" in df.columns:
+            mask_contains = df["Etat de Conformité"].astype(str).str.contains("Surveillance conformité", case=False, na=False)
+            mask_exact = df["Etat de Conformité"].astype(str).str.contains("Surveillance conformité", case=True, na=False)
 
             if (mask_contains & ~mask_exact).any():
                 warnings.warn("Some rows matched 'Surveillance conformité' with different casing.")
