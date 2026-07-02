@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import os
 from typing import List, Dict, Any, Union
 
@@ -40,16 +41,10 @@ def load_data(source: Union[str, pd.DataFrame], safe_base_dir: str = None, **kwa
     else:
         raise ValueError("Source must be a file path string or a pandas DataFrame.")
 
-def load_excel_with_2row_header(filepath: str) -> pd.DataFrame:
+def _apply_2row_header_logic(raw: pd.DataFrame) -> pd.DataFrame:
     """
-    Load an Excel file where:
-      - rows 0 and 1 form the header
-      - merged cells may exist in these rows
+    Applies the 2-row header logic to a raw DataFrame without headers.
     """
-
-    # Read everything as raw data
-    raw = pd.read_excel(filepath, header=None)
-
     # Recover merged cells in the first 2 rows
     header_rows = raw.iloc[:2].ffill(axis=1)
 
@@ -84,6 +79,19 @@ def load_excel_with_2row_header(filepath: str) -> pd.DataFrame:
 
     return df
 
+
+def load_excel_with_2row_header(filepath: str) -> pd.DataFrame:
+    """
+    Load an Excel file where:
+      - rows 0 and 1 form the header
+      - merged cells may exist in these rows
+    """
+
+    # Read everything as raw data
+    raw = pd.read_excel(filepath, header=None)
+
+    return _apply_2row_header_logic(raw)
+
 def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
     Cleans a pandas DataFrame by filling NaN values with empty strings for text processing.
@@ -100,6 +108,8 @@ def load_and_clean_data(source: Union[str, pd.DataFrame], **kwargs) -> pd.DataFr
     """
     Loads data and cleans it by filling NaN values with empty strings.
     This is a convenience function combining `load_data` and `clean_dataframe`.
+    If the loaded data contains an empty column header (denoted by "Unnamed:"),
+    it reconstructs the raw dataframe and applies the 2-row header logic.
 
     Args:
         source (Union[str, pd.DataFrame]): The file path or a pandas DataFrame.
@@ -109,4 +119,16 @@ def load_and_clean_data(source: Union[str, pd.DataFrame], **kwargs) -> pd.DataFr
         pd.DataFrame: The loaded and cleaned DataFrame.
     """
     df = load_data(source, **kwargs)
+
+    # Check if any column name indicates an empty header
+    if any("Unnamed:" in str(col) for col in df.columns):
+        # Reconstruct the raw dataframe
+        raw_cols = [np.nan if "Unnamed:" in str(col) else col for col in df.columns]
+        raw_cols_df = pd.DataFrame([raw_cols], columns=df.columns)
+        raw_df = pd.concat([raw_cols_df, df], ignore_index=True)
+        # Reset column names to match raw pd.read_excel(header=None) format
+        raw_df.columns = range(raw_df.shape[1])
+
+        df = _apply_2row_header_logic(raw_df)
+
     return clean_dataframe(df)
