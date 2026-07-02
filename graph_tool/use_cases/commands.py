@@ -67,24 +67,41 @@ class CommandHandler:
         for step in steps:
             step.execute(df, proj_node, self.cmd, self.qry)
 
-    def add_rex(self, project_name: str, data_source: Union[str, pd.DataFrame]):
+    def add_rex(
+        self,
+        project_name: str,
+        data_source: Union[str, pd.DataFrame],
+        loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data
+    ):
         """
         Creates Return on Experience (REX) nodes linked to a Project and an Exigence.
 
         Expected column in the data source:
-        - Exigence (used to find the existing Exigence node via exact or fuzzy description matching)
+        - Exigence or Exigences (used to find the existing Exigence node via exact or fuzzy description matching)
+        - REX Detail or Commentaire general (used for the REX description)
 
         Args:
             project_name (str): The name of the project.
             data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+            loader (Callable): Function to load the data_source into a DataFrame.
 
         Raises:
-            ValueError: If the project is not found in the graph or if an Exigence cannot be matched.
+            ValueError: If the project is not found in the graph or if an Exigence cannot be matched,
+                        or if neither 'REX Detail' nor 'Commentaire general' column is found.
         """
-        df = load_and_clean_data(data_source)
+        df = loader(data_source)
 
-        if "REX Detail" not in df.columns:
-            raise ValueError("The 'REX Detail' column is missing from the provided data source.")
+        if "Commentaire general" in df.columns:
+            rex_col = "Commentaire general"
+        elif "REX Detail" in df.columns:
+            rex_col = "REX Detail"
+        else:
+            raise ValueError("Neither 'REX Detail' nor 'Commentaire general' column is found in the provided data source.")
+
+        if "Exigences" in df.columns:
+            exigence_col = "Exigences"
+        else:
+            exigence_col = "Exigence"
 
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
@@ -96,8 +113,8 @@ class CommandHandler:
         desc_list = list(exigence_descriptions.keys())
 
         for idx, row in df.iterrows():
-            exigence_text = str(row.get("Exigence", "")).strip()
-            rex_detail_text = str(row.get("REX Detail", "")).strip()
+            exigence_text = str(row.get(exigence_col, "")).strip()
+            rex_detail_text = str(row.get(rex_col, "")).strip()
             if not exigence_text:
                 continue
 
