@@ -99,5 +99,37 @@ class TestTextUtils(unittest.TestCase):
         # Ensure it matches the exact one rather than substrings
         self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
 
+    def test_find_best_match_choices_with_none(self):
+        # thefuzz process can handle None elements by ignoring them
+        choices = ["banana", None, "apple"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+    def test_find_best_match_choices_all_none(self):
+        # If all choices are None, no match will be found
+        choices = [None, None]
+        self.assertIsNone(find_best_match("apple", choices))
+
+    def test_find_best_match_duplicates_in_choices(self):
+        choices = ["banana", "apple", "apple"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+    def test_find_best_match_unsupported_chars(self):
+        # Emojis are stripped out by thefuzz's processor, leading to an empty string comparison.
+        # This yields a score of 0, which is below the threshold.
+        choices = ["🍌", "🍎", "🍊"]
+        self.assertIsNone(find_best_match("🍎", choices))
+
+    def test_find_best_match_mixed_types_in_choices(self):
+        # thefuzz attempts to coerce to strings
+        choices = ["banana", 123, "apple"]
+        self.assertEqual(find_best_match("123", choices), 123)
+
+    def test_find_best_match_dict_choices(self):
+        # thefuzz supports passing a dictionary for choices.
+        # ExtractOne returns a 3-element tuple: (match, score, key)
+        # Our function expects result[0] to be the match and result[1] to be the score.
+        choices = {"b": "banana", "a": "apple"}
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
 if __name__ == "__main__":
     unittest.main()
