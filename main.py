@@ -6,6 +6,7 @@ from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
 from graph_tool.use_cases.storage import StorageHandler
+from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
 
 def main():
     print("Initializing the Graph Tool...")
@@ -37,10 +38,10 @@ def main():
 
     # Load exigencies for 3 different projects
     print("Loading Project A...")
-    commands.add_project_exigences("Project A", file_project_A)
+    commands.add_project_exigences("Project A", file_project_A,steps=[CreateExigenceAndArticlesStep(), LinkMetierStep(), LinkPhaseProjetStep()])
 
     print("Loading Project B...")
-    commands.add_project_exigences("Project B", file_project_B)
+    commands.add_project_exigences("Project B", file_project_B,steps=[CreateExigenceAndArticlesStep(), LinkMetierStep(), LinkPhaseProjetStep()])
 
     print("Loading Project C...")
     commands.add_project_exigences("Project C", file_project_C)
