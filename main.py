@@ -1,8 +1,11 @@
+import os
 import pandas as pd
+from datetime import datetime
 from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepository
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
+from graph_tool.use_cases.storage import StorageHandler
 
 def main():
     print("Initializing the Graph Tool...")
@@ -12,12 +15,23 @@ def main():
     commands = CommandHandler(repo, repo)
     queries = QueryHandler(repo)
     enhancements = GraphEnhancements(repo)
+    storage = StorageHandler(repo)
 
     # 2. File paths for the generated dummy data
     file_project_A = "project_A.xlsx"
     file_project_B = "project_B.xlsx"
     file_project_C = "project_C.xlsx"
     file_rex_A = "rex_project_A.xlsx"
+
+    # Optional: Set a file to load an existing graph from (e.g. "my_graph.graphml")
+    # Comment out or set to None to start from an empty graph
+    graph_file_to_load = None
+
+    if graph_file_to_load and os.path.exists(graph_file_to_load):
+        print(f"\n--- Loading Existing Graph from {graph_file_to_load} ---")
+        storage.load_graph(graph_file_to_load)
+    else:
+        print("\n--- Starting with an empty graph ---")
 
     print("\n--- Loading Data ---")
 
@@ -90,6 +104,12 @@ def main():
     print(f"\nGenerating HTML visualization of the graph...")
     enhancements.visualize_graph(output_html)
     print(f"Visualization saved to {output_html}. Open it in your browser to view the graph.")
+
+    print("\n--- Saving the Graph ---")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    save_filename = f"graph_{timestamp}.graphml"
+    storage.save_graph(save_filename)
+    print(f"Graph saved successfully to {save_filename} with horodate.")
 
 if __name__ == "__main__":
     main()
