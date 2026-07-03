@@ -89,7 +89,7 @@ def main():
     # Question 1: Find similar projects to Project A based on its exigencies
     # Let's extract the exigencies text from Project A's dataframe for the query
     df_a = pd.read_excel(file_project_A)
-    exigencies_a = df_a["Exigence"].dropna().tolist()
+    exigencies_a = df_a["Exigences"].dropna().tolist()
 
     print(f"Question: What are the most similar projects to Project A?")
     similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2)
@@ -97,7 +97,7 @@ def main():
 
     # Question 2: Get useful REX for Project B based on its exigencies
     df_b = pd.read_excel(file_project_B)
-    exigencies_b = df_b["Exigence"].dropna().tolist()
+    exigencies_b = df_b["Exigences"].dropna().tolist()
 
     print(f"\nQuestion: Are there any useful REX for Project B from similar projects?")
     # This function uses the find_most_similar_projects internally to find REX
