@@ -91,7 +91,7 @@ class CommandHandler:
         """
         df = loader(data_source)
 
-        if "Commentaire general" in df.columns:
+        if "Commentaire général" in df.columns:
             rex_col = "Commentaire general"
         elif "REX Detail" in df.columns:
             rex_col = "REX Detail"
