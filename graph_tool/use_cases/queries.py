@@ -19,13 +19,14 @@ class QueryHandler:
         """
         self.qry = query_repo
 
-    def _get_exigence_nodes_from_texts(self, texts: List[str]) -> List[Node]:
+    def _get_exigence_nodes_from_texts(self, texts: List[str], exact_match: bool = False) -> List[Node]:
         """
         Helper method to map a list of requirement texts to existing Exigence nodes
         using exact or fuzzy matching.
 
         Args:
             texts (List[str]): List of requirement texts to match.
+            exact_match (bool): If True, skips fuzzy matching. Defaults to False.
 
         Returns:
             List[Node]: A deduplicated list of matching Exigence nodes.
@@ -40,13 +41,13 @@ class QueryHandler:
                 continue
             if text in exigence_descriptions:
                 matched_nodes.append(exigence_descriptions[text])
-            else:
+            elif not exact_match:
                 best_match = find_best_match(text, desc_list)
                 if best_match:
                     matched_nodes.append(exigence_descriptions[best_match])
         return list(set(matched_nodes)) # deduplicate
 
-    def find_most_similar_projects(self, target_project_name: str, exigencies_texts: List[str], top_k: int = 1) -> List[str]:
+    def find_most_similar_projects(self, target_project_name: str, exigencies_texts: List[str], top_k: int = 1, exact_match: bool = False) -> List[str]:
         """
         Given a project name and a list of exigencies text, finds the `top_k` projects
         that share the most exigencies with the provided list.
@@ -56,11 +57,12 @@ class QueryHandler:
             target_project_name (str): The name of the baseline project to exclude.
             exigencies_texts (List[str]): A list of requirement texts to compare against.
             top_k (int): The maximum number of similar projects to return. Defaults to 1.
+            exact_match (bool): If True, skips fuzzy matching. Defaults to False.
 
         Returns:
             List[str]: A list containing the names of the most similar projects.
         """
-        target_exigence_nodes = self._get_exigence_nodes_from_texts(exigencies_texts)
+        target_exigence_nodes = self._get_exigence_nodes_from_texts(exigencies_texts, exact_match=exact_match)
         target_exigence_ids = {node.id for node in target_exigence_nodes}
 
         project_nodes = self.qry.get_nodes_by_type(NodeType.PROJET)
@@ -81,7 +83,7 @@ class QueryHandler:
         sorted_projects = sorted(project_scores.items(), key=lambda item: item[1], reverse=True)
         return [proj_name for proj_name, _ in sorted_projects[:top_k]]
 
-    def get_useful_rex(self, project_name: str, exigencies_texts: List[str]) -> List[str]:
+    def get_useful_rex(self, project_name: str, exigencies_texts: List[str], exact_match: bool = False) -> List[str]:
         """
         Given a project name and a list of exigencies text, extracts related REX (Return on Experience)
         nodes from the up to 3 most similar projects.
@@ -90,14 +92,15 @@ class QueryHandler:
         Args:
             project_name (str): The name of the baseline project.
             exigencies_texts (List[str]): A list of requirement texts.
+            exact_match (bool): If True, skips fuzzy matching. Defaults to False.
 
         Returns:
             List[str]: A list of IDs for the useful REX nodes.
         """
-        similar_projects = self.find_most_similar_projects(project_name, exigencies_texts, top_k=3)
+        similar_projects = self.find_most_similar_projects(project_name, exigencies_texts, top_k=3, exact_match=exact_match)
         useful_rex = set()
 
-        target_exg_nodes = self._get_exigence_nodes_from_texts(exigencies_texts)
+        target_exg_nodes = self._get_exigence_nodes_from_texts(exigencies_texts, exact_match=exact_match)
         target_exg_ids = {n.id for n in target_exg_nodes}
 
         for proj_name in similar_projects:

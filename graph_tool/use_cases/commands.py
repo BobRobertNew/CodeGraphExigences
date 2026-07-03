@@ -52,7 +52,7 @@ class CommandHandler:
 
             df = df[mask_contains].copy()
         else:
-            warnings.warn("Column 'Etat de conformité' not found. Proceeding without filtering.")
+            warnings.warn("Column 'Etat de Conformité' not found. Proceeding without filtering.")
 
         # 1. Ensure Project Node exists
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
