@@ -20,7 +20,7 @@ class StorageHandler:
 
         Args:
             filepath (str): The destination path for the saved file.
-            format (str): The format to save the graph in. Supported formats: graphml, json, pickle. Defaults to "graphml".
+            format (str): The format to save the graph in. Supported formats: graphml, gexf, json, pickle. Defaults to "graphml".
         """
         self.storage.save_graph(filepath, format)
 
@@ -30,6 +30,6 @@ class StorageHandler:
 
         Args:
             filepath (str): The path to the file to load.
-            format (str): The format of the file. Supported formats: graphml, json, pickle. Defaults to "graphml".
+            format (str): The format of the file. Supported formats: graphml, gexf, json, pickle. Defaults to "graphml".
         """
         self.storage.load_graph(filepath, format)

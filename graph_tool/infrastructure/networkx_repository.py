@@ -23,13 +23,15 @@ class NetworkXGraphRepository(IGraphCommand, IGraphQuery, IGraphStorage):
 
         Args:
             filepath (str): The path to the file.
-            format (str): The format to save the graph in. Supported formats are "graphml", "json", and "pickle".
+            format (str): The format to save the graph in. Supported formats are "graphml", "gexf", "json", and "pickle".
 
         Raises:
             ValueError: If an unsupported format is provided.
         """
         if format == "graphml":
             nx.write_graphml(self.graph, filepath)
+        elif format == "gexf":
+            nx.write_gexf(self.graph, filepath)
         elif format == "json":
             data = nx.node_link_data(self.graph)
             with open(filepath, 'w') as f:
@@ -46,13 +48,15 @@ class NetworkXGraphRepository(IGraphCommand, IGraphQuery, IGraphStorage):
 
         Args:
             filepath (str): The path to the file.
-            format (str): The format to load the graph from. Supported formats are "graphml", "json", and "pickle".
+            format (str): The format to load the graph from. Supported formats are "graphml", "gexf", "json", and "pickle".
 
         Raises:
             ValueError: If an unsupported format is provided.
         """
         if format == "graphml":
             self.graph = nx.read_graphml(filepath)
+        elif format == "gexf":
+            self.graph = nx.read_gexf(filepath)
         elif format == "json":
             with open(filepath, 'r') as f:
                 data = json.load(f)
