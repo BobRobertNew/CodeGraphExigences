@@ -71,7 +71,8 @@ class CommandHandler:
         self,
         project_name: str,
         data_source: Union[str, pd.DataFrame],
-        loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data
+        loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
+        exact_match_only: bool = False
     ):
         """
         Creates Return on Experience (REX) nodes linked to a Project and an Exigence.
@@ -84,6 +85,7 @@ class CommandHandler:
             project_name (str): The name of the project.
             data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
             loader (Callable): Function to load the data_source into a DataFrame.
+            exact_match_only (bool): If True, strictly requires an exact match for Exigence, and skips the row if not found.
 
         Raises:
             ValueError: If the project is not found in the graph or if an Exigence cannot be matched,
@@ -91,8 +93,8 @@ class CommandHandler:
         """
         df = loader(data_source)
 
-        if "Commentaire général" in df.columns:
-            rex_col = "Commentaire general"
+        if "Commentaire général" in df.columns or "Commentaire general" in df.columns:
+            rex_col = "Commentaire general" if "Commentaire general" in df.columns else "Commentaire général"
         elif "REX Detail" in df.columns:
             rex_col = "REX Detail"
         else:
@@ -118,17 +120,23 @@ class CommandHandler:
             if not exigence_text:
                 continue
 
-            # Try exact match first, then fuzzy
             target_exg = None
-            if exigence_text in exigence_descriptions:
-                target_exg = exigence_descriptions[exigence_text]
+            if exact_match_only:
+                exg_id = generate_short_id("EXG", exigence_text)
+                target_exg = self.qry.get_node(exg_id)
+                if not target_exg:
+                    continue  # Skip row if exact match not found
             else:
-                best_match_text = find_best_match(exigence_text, desc_list)
-                if best_match_text:
-                    target_exg = exigence_descriptions[best_match_text]
+                # Try exact match first, then fuzzy
+                if exigence_text in exigence_descriptions:
+                    target_exg = exigence_descriptions[exigence_text]
+                else:
+                    best_match_text = find_best_match(exigence_text, desc_list)
+                    if best_match_text:
+                        target_exg = exigence_descriptions[best_match_text]
 
-            if not target_exg:
-                raise ValueError(f"Exigence matching '{exigence_text}' not found in the graph.")
+                if not target_exg:
+                    raise ValueError(f"Exigence matching '{exigence_text}' not found in the graph.")
 
             # Create REX
             # ID codification readable
@@ -151,7 +159,7 @@ class CommandHandler:
             self.cmd.add_edge(Edge(rex_node.id, proj_node.id))
             self.cmd.add_edge(Edge(rex_node.id, target_exg.id))
 
-    def add_specification(self, spec_id: str, spec_name: str, data_source: Union[str, pd.DataFrame]):
+    def add_specification(self, spec_id: str, spec_name: str, data_source: Union[str, pd.DataFrame], exact_match_only: bool = False):
         """
         Creates a Specification node and connects it to a list of Exigence nodes.
 
@@ -162,6 +170,7 @@ class CommandHandler:
             spec_id (str): The unique ID of the specification.
             spec_name (str): The name of the specification.
             data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+            exact_match_only (bool): If True, strictly requires an exact match for Exigence, and skips the row if not found.
         """
         df = load_and_clean_data(data_source)
 
@@ -179,23 +188,29 @@ class CommandHandler:
             if not exigence_text:
                 continue
 
-            # Try exact/fuzzy matching
             target_exg = None
-            if exigence_text in exigence_descriptions:
-                target_exg = exigence_descriptions[exigence_text]
-            else:
-                best_match_text = find_best_match(exigence_text, desc_list)
-                if best_match_text:
-                    target_exg = exigence_descriptions[best_match_text]
-
-            # Create new Exigence node if it doesn't exist even after fuzzy matching
-            if not target_exg:
+            if exact_match_only:
                 exg_id = generate_short_id("EXG", exigence_text)
-                target_exg = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
-                self.cmd.add_node(target_exg)
-                # update dict and list for subsequent rows
-                exigence_descriptions[exigence_text] = target_exg
-                desc_list.append(exigence_text)
+                target_exg = self.qry.get_node(exg_id)
+                if not target_exg:
+                    continue  # Skip row if exact match not found
+            else:
+                # Try exact/fuzzy matching
+                if exigence_text in exigence_descriptions:
+                    target_exg = exigence_descriptions[exigence_text]
+                else:
+                    best_match_text = find_best_match(exigence_text, desc_list)
+                    if best_match_text:
+                        target_exg = exigence_descriptions[best_match_text]
+
+                # Create new Exigence node if it doesn't exist even after fuzzy matching
+                if not target_exg:
+                    exg_id = generate_short_id("EXG", exigence_text)
+                    target_exg = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
+                    self.cmd.add_node(target_exg)
+                    # update dict and list for subsequent rows
+                    exigence_descriptions[exigence_text] = target_exg
+                    desc_list.append(exigence_text)
 
             self.cmd.add_edge(Edge(spec_node.id, target_exg.id))
 
