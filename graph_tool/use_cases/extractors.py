@@ -121,7 +121,7 @@ class CreateExigenceAndArticlesStep(IExtractionStep):
 
             # Sous Article Node
             if sous_article_name and sous_article_name.lower() != "nan":
-                sous_art_id = generate_short_id("SART", sous_article_name)
+                sous_art_id = generate_short_id("SART", sous_article_name+article_name)
                 sous_art_node = qry.get_node(sous_art_id)
                 if not sous_art_node:
                     sous_art_node = Node(id=sous_art_id, type=NodeType.SOUS_ARTICLE, metadata={"name": sous_article_name})
