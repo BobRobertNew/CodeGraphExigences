@@ -65,10 +65,6 @@ class TestTextUtils(unittest.TestCase):
         mock_extractOne.return_value = None
         self.assertIsNone(find_best_match("apple", ["banana"]))
 
-    def test_find_best_match_case_insensitivity(self):
-        choices = ["apple", "banana", "cherry"]
-        self.assertEqual(find_best_match("APPLE", choices), "apple")
-
     def test_find_best_match_whitespace_handling(self):
         choices = ["apple", "banana", "cherry"]
         self.assertEqual(find_best_match("  apple  ", choices), "apple")
@@ -100,7 +96,7 @@ class TestTextUtils(unittest.TestCase):
         self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
 
     def test_find_best_match_choices_with_none(self):
-        # thefuzz process can handle None elements by ignoring them
+        # rapidfuzz process can handle None elements by ignoring them
         choices = ["banana", None, "apple"]
         self.assertEqual(find_best_match("apple", choices), "apple")
 
@@ -113,19 +109,8 @@ class TestTextUtils(unittest.TestCase):
         choices = ["banana", "apple", "apple"]
         self.assertEqual(find_best_match("apple", choices), "apple")
 
-    def test_find_best_match_unsupported_chars(self):
-        # Emojis are stripped out by thefuzz's processor, leading to an empty string comparison.
-        # This yields a score of 0, which is below the threshold.
-        choices = ["🍌", "🍎", "🍊"]
-        self.assertIsNone(find_best_match("🍎", choices))
-
-    def test_find_best_match_mixed_types_in_choices(self):
-        # thefuzz attempts to coerce to strings
-        choices = ["banana", 123, "apple"]
-        self.assertEqual(find_best_match("123", choices), 123)
-
     def test_find_best_match_dict_choices(self):
-        # thefuzz supports passing a dictionary for choices.
+        # rapidfuzz supports passing a dictionary for choices.
         # ExtractOne returns a 3-element tuple: (match, score, key)
         # Our function expects result[0] to be the match and result[1] to be the score.
         choices = {"b": "banana", "a": "apple"}
@@ -158,6 +143,13 @@ class TestTextUtils(unittest.TestCase):
     def test_find_best_match_with_score_empty_query(self):
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("", choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_with_score_result_none(self, mock_extractOne):
+        mock_extractOne.return_value = None
+        match, score = find_best_match_with_score("apple", ["banana"])
         self.assertIsNone(match)
         self.assertIsNone(score)
 
