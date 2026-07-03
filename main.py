@@ -7,6 +7,7 @@ from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
 from graph_tool.use_cases.storage import StorageHandler
 from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
+from graph_tool.domain.entities import NodeType
 
 def main():
     print("Initializing the Graph Tool...")
@@ -54,10 +55,41 @@ def main():
 
     print("\n--- Running Queries ---")
 
+    # Newly Added Questions
+
+    print("\nQuestion: How many nodes the graph has?")
+    total_nodes = queries.get_total_node_count()
+    print(f"Answer: The graph has {total_nodes} nodes.")
+
+    print("\nQuestion: How many exigences has the project A?")
+    project_a_exg_count = queries.get_exigences_count_for_project("Project A")
+    print(f"Answer: Project A has {project_a_exg_count} exigences.")
+
+    print("\nQuestion: How many exigences with REX has the project A?")
+    project_a_exg_rex_count = queries.get_exigences_count_with_rex_for_project("Project A")
+    print(f"Answer: Project A has {project_a_exg_rex_count} exigences with REX.")
+
+    test_metier = "Mécanique"
+    print(f"\nQuestion: How many exigences are linked to Project A and the Métier '{test_metier}'?")
+    count_proj_metier = queries.get_exigences_count_for_project_and_metier("Project A", test_metier)
+    print(f"Answer: Project A has {count_proj_metier} exigences linked to {test_metier}.")
+
+    print("\nQuestion: Generic search - How many REX nodes are connected to Project A's exigences?")
+    proj_a_node = repo.find_node_by_exact_metadata("name", "Project A", NodeType.PROJET)
+    if proj_a_node:
+        proj_a_exg_nodes = queries.get_exigences_for_project("Project A")
+        exg_ids = [n.id for n in proj_a_exg_nodes]
+        rex_count, rex_nodes = queries.get_connected_nodes(source_node_ids=exg_ids, target_type=NodeType.REX)
+        print(f"Answer: There are {rex_count} REX nodes connected to Project A's exigences.")
+        for r in rex_nodes[:2]:
+            print(f"  - REX snippet: {r.metadata.get('description', '')[:50]}...")
+        if rex_count > 2:
+            print(f"  - ... and {rex_count - 2} more.")
+
     # Question 1: Find similar projects to Project A based on its exigencies
     # Let's extract the exigencies text from Project A's dataframe for the query
     df_a = pd.read_excel(file_project_A)
-    exigencies_a = df_a["Exigences"].dropna().tolist()
+    exigencies_a = df_a["Exigence"].dropna().tolist()
 
     print(f"Question: What are the most similar projects to Project A?")
     similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2)
@@ -65,7 +97,7 @@ def main():
 
     # Question 2: Get useful REX for Project B based on its exigencies
     df_b = pd.read_excel(file_project_B)
-    exigencies_b = df_b["Exigences"].dropna().tolist()
+    exigencies_b = df_b["Exigence"].dropna().tolist()
 
     print(f"\nQuestion: Are there any useful REX for Project B from similar projects?")
     # This function uses the find_most_similar_projects internally to find REX

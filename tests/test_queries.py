@@ -1,0 +1,102 @@
+import unittest
+import pandas as pd
+from graph_tool.domain.entities import Node, Edge, NodeType
+from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepository
+from graph_tool.use_cases.queries import QueryHandler
+
+class TestQueryHandler(unittest.TestCase):
+    def setUp(self):
+        self.repo = NetworkXGraphRepository()
+        self.query_handler = QueryHandler(self.repo)
+
+    def test_get_total_node_count(self):
+        n1 = Node(id="n1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
+        n2 = Node(id="n2", type=NodeType.PROJET, metadata={"name": "Proj 1"})
+        self.repo.add_node(n1)
+        self.repo.add_node(n2)
+        count = self.query_handler.get_total_node_count()
+        self.assertEqual(count, 2)
+
+    def test_get_exigences_for_project(self):
+        proj = Node(id="p1", type=NodeType.PROJET, metadata={"name": "Project A"})
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exg 2"})
+        self.repo.add_node(proj)
+        self.repo.add_node(exg1)
+        self.repo.add_node(exg2)
+        self.repo.add_edge(Edge(source_id="p1", target_id="e1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="p1", target_id="e2", type="LINKED_TO"))
+
+        exg_nodes = self.query_handler.get_exigences_for_project("Project A")
+        self.assertEqual(len(exg_nodes), 2)
+        count = self.query_handler.get_exigences_count_for_project("Project A")
+        self.assertEqual(count, 2)
+
+    def test_get_exigences_with_rex_for_project(self):
+        proj = Node(id="p1", type=NodeType.PROJET, metadata={"name": "Project A"})
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exg 2"})
+        rex1 = Node(id="r1", type=NodeType.REX, metadata={"description": "REX 1"})
+        self.repo.add_node(proj)
+        self.repo.add_node(exg1)
+        self.repo.add_node(exg2)
+        self.repo.add_node(rex1)
+        self.repo.add_edge(Edge(source_id="p1", target_id="e1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="p1", target_id="e2", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e1", target_id="r1", type="LINKED_TO"))
+
+        exg_rex_nodes = self.query_handler.get_exigences_with_rex_for_project("Project A")
+        self.assertEqual(len(exg_rex_nodes), 1)
+        self.assertEqual(exg_rex_nodes[0].id, "e1")
+        count = self.query_handler.get_exigences_count_with_rex_for_project("Project A")
+        self.assertEqual(count, 1)
+
+    def test_get_exigences_for_project_and_metier(self):
+        proj = Node(id="p1", type=NodeType.PROJET, metadata={"name": "Project A"})
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exg 2"})
+        metier = Node(id="m1", type=NodeType.METIER, metadata={"name": "Mécanique"})
+        self.repo.add_node(proj)
+        self.repo.add_node(exg1)
+        self.repo.add_node(exg2)
+        self.repo.add_node(metier)
+        self.repo.add_edge(Edge(source_id="p1", target_id="e1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="p1", target_id="e2", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e1", target_id="m1", type="LINKED_TO"))
+
+        nodes = self.query_handler.get_exigences_for_project_and_metier("Project A", "Mécanique")
+        self.assertEqual(len(nodes), 1)
+        self.assertEqual(nodes[0].id, "e1")
+        count = self.query_handler.get_exigences_count_for_project_and_metier("Project A", "Mécanique")
+        self.assertEqual(count, 1)
+
+    def test_get_connected_nodes(self):
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exg 2"})
+        rex1 = Node(id="r1", type=NodeType.REX, metadata={"status": "open", "description": "REX 1"})
+        rex2 = Node(id="r2", type=NodeType.REX, metadata={"status": "closed", "description": "REX 2"})
+        metier1 = Node(id="m1", type=NodeType.METIER, metadata={"name": "Mec"})
+        self.repo.add_node(exg1)
+        self.repo.add_node(exg2)
+        self.repo.add_node(rex1)
+        self.repo.add_node(rex2)
+        self.repo.add_node(metier1)
+        self.repo.add_edge(Edge(source_id="e1", target_id="r1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e1", target_id="r2", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e2", target_id="r1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e2", target_id="m1", type="LINKED_TO"))
+
+        count, nodes = self.query_handler.get_connected_nodes(["e1", "e2"])
+        self.assertEqual(count, 3)
+        count, nodes = self.query_handler.get_connected_nodes(["e1", "e2"], target_type=NodeType.REX)
+        self.assertEqual(count, 2)
+        count, nodes = self.query_handler.get_connected_nodes(
+            ["e1", "e2"],
+            target_type=NodeType.REX,
+            metadata_filters={"status": "open"}
+        )
+        self.assertEqual(count, 1)
+        self.assertEqual(nodes[0].id, "r1")
+
+if __name__ == '__main__':
+    unittest.main()

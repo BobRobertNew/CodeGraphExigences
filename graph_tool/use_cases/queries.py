@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import List, Dict, Any, Union, Set, Tuple
+from typing import List, Dict, Any, Union, Set, Tuple, Optional
 from ..domain.entities import Node, NodeType
 from ..domain.ports import IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match
@@ -334,3 +334,137 @@ class QueryHandler:
                     loi_names.add(l.metadata.get("name", ""))
 
         return list(loi_names)
+
+    def get_total_node_count(self) -> int:
+        """
+        Returns the total number of nodes in the graph.
+
+        Returns:
+            int: The total number of nodes.
+        """
+        return len(self.qry.get_all_nodes())
+
+    def get_exigences_for_project(self, project_name: str) -> List[Node]:
+        """
+        Returns the list of Exigence nodes linked to a given project.
+
+        Args:
+            project_name (str): The name of the project.
+
+        Returns:
+            List[Node]: A list of Exigence nodes linked to the project.
+        """
+        proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
+        if not proj_node:
+            return []
+        return self.qry.get_neighbors(proj_node.id, NodeType.EXIGENCE)
+
+    def get_exigences_count_for_project(self, project_name: str) -> int:
+        """
+        Returns the number of Exigence nodes linked to a given project.
+
+        Args:
+            project_name (str): The name of the project.
+
+        Returns:
+            int: The number of Exigence nodes.
+        """
+        return len(self.get_exigences_for_project(project_name))
+
+    def get_exigences_with_rex_for_project(self, project_name: str) -> List[Node]:
+        """
+        Returns the list of Exigence nodes linked to a given project that also have at least one REX.
+
+        Args:
+            project_name (str): The name of the project.
+
+        Returns:
+            List[Node]: A list of Exigence nodes linked to the project and to a REX.
+        """
+        exigences = self.get_exigences_for_project(project_name)
+        exigences_with_rex = []
+        for exg in exigences:
+            rex_nodes = self.qry.get_neighbors(exg.id, NodeType.REX)
+            if rex_nodes:
+                exigences_with_rex.append(exg)
+        return exigences_with_rex
+
+    def get_exigences_count_with_rex_for_project(self, project_name: str) -> int:
+        """
+        Returns the number of Exigence nodes linked to a given project that also have at least one REX.
+
+        Args:
+            project_name (str): The name of the project.
+
+        Returns:
+            int: The number of Exigence nodes.
+        """
+        return len(self.get_exigences_with_rex_for_project(project_name))
+
+    def get_exigences_for_project_and_metier(self, project_name: str, metier_name: str) -> List[Node]:
+        """
+        Returns the list of Exigence nodes linked to a given project and a given Métier.
+
+        Args:
+            project_name (str): The name of the project.
+            metier_name (str): The name of the métier.
+
+        Returns:
+            List[Node]: A list of Exigence nodes matching both project and métier.
+        """
+        exigences = self.get_exigences_for_project(project_name)
+        matched_exigences = []
+        for exg in exigences:
+            metiers = self.qry.get_neighbors(exg.id, NodeType.METIER)
+            if any(m.metadata.get("name") == metier_name for m in metiers):
+                matched_exigences.append(exg)
+        return matched_exigences
+
+    def get_exigences_count_for_project_and_metier(self, project_name: str, metier_name: str) -> int:
+        """
+        Returns the number of Exigence nodes linked to a given project and a given Métier.
+
+        Args:
+            project_name (str): The name of the project.
+            metier_name (str): The name of the métier.
+
+        Returns:
+            int: The number of Exigence nodes.
+        """
+        return len(self.get_exigences_for_project_and_metier(project_name, metier_name))
+
+    def get_connected_nodes(
+        self,
+        source_node_ids: List[str],
+        target_type: Optional[NodeType] = None,
+        metadata_filters: Optional[Dict[str, Any]] = None
+    ) -> Tuple[int, List[Node]]:
+        """
+        Generically gets the number and list of unique nodes connected to the given source nodes.
+        Optionally filters by the target node type and specific metadata criteria.
+
+        Args:
+            source_node_ids (List[str]): The IDs of the starting nodes.
+            target_type (Optional[NodeType]): Only return connected nodes of this type.
+            metadata_filters (Optional[Dict[str, Any]]): Only return nodes matching these metadata key-value pairs.
+
+        Returns:
+            Tuple[int, List[Node]]: The count and the list of unique matching connected nodes.
+        """
+        connected_nodes_set = set()
+
+        for source_id in source_node_ids:
+            neighbors = self.qry.get_neighbors(source_id, filter_type=target_type)
+            for neighbor in neighbors:
+                if metadata_filters:
+                    match = True
+                    for k, v in metadata_filters.items():
+                        if neighbor.metadata.get(k) != v:
+                            match = False
+                            break
+                    if not match:
+                        continue
+                connected_nodes_set.add(neighbor)
+
+        connected_nodes_list = list(connected_nodes_set)
+        return len(connected_nodes_list), connected_nodes_list
