@@ -89,7 +89,7 @@ def main():
     # Question 1: Find similar projects to Project A based on its exigencies
     # Let's extract the exigencies text from Project A's dataframe for the query
     df_a = pd.read_excel(file_project_A)
-    exigencies_a = df_a["Exigences"].dropna().tolist()
+    exigencies_a = df_a["Exigence"].dropna().tolist()
 
     print(f"Question: What are the most similar projects to Project A?")
     similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2)
@@ -97,7 +97,7 @@ def main():
 
     # Question 2: Get useful REX for Project B based on its exigencies
     df_b = pd.read_excel(file_project_B)
-    exigencies_b = df_b["Exigences"].dropna().tolist()
+    exigencies_b = df_b["Exigence"].dropna().tolist()
 
     print(f"\nQuestion: Are there any useful REX for Project B from similar projects?")
     # This function uses the find_most_similar_projects internally to find REX
@@ -121,6 +121,17 @@ def main():
         print(f"  Phase: {first_row.get('Phase projet (Graph)', '')}")
         print(f"  Métier: {first_row.get('Métier (Graph)', '')}")
         print(f"  Preuve: {first_row.get('Preuve de conformité (Graph)', '')}")
+
+    # Question 4: Find similar exigencies for Project C
+    df_c = pd.read_excel(file_project_C)
+    exigencies_c = df_c["Exigence"].dropna().tolist()
+    print(f"\nQuestion: What are the most similar exigencies in the graph to those in Project C?")
+    similar_exigencies_df = queries.find_most_similar_exigencies(exigencies_c)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    similar_exigencies_filename = f"similar_exigencies_{timestamp}.xlsx"
+    similar_exigencies_df.to_excel(similar_exigencies_filename, index=False)
+    print(f"Answer: Found similar exigencies. Results saved to {similar_exigencies_filename}")
 
     print("\n--- Enhancements ---")
 

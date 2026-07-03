@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from graph_tool.utils.text_utils import find_best_match, generate_short_id
+from graph_tool.utils.text_utils import find_best_match, generate_short_id, find_best_match_with_score
 
 class TestTextUtils(unittest.TestCase):
     def test_generate_short_id_normal(self):
@@ -130,6 +130,36 @@ class TestTextUtils(unittest.TestCase):
         # Our function expects result[0] to be the match and result[1] to be the score.
         choices = {"b": "banana", "a": "apple"}
         self.assertEqual(find_best_match("apple", choices), "apple")
+
+    def test_find_best_match_with_score_exact(self):
+        choices = ["apple", "banana", "orange"]
+        match, score = find_best_match_with_score("apple", choices)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 100)
+
+    def test_find_best_match_with_score_fuzzy(self):
+        choices = ["apple", "banana", "orange"]
+        match, score = find_best_match_with_score("aple", choices)
+        self.assertEqual(match, "apple")
+        self.assertGreaterEqual(score, 70)
+        self.assertLess(score, 100)
+
+    def test_find_best_match_with_score_below_threshold(self):
+        choices = ["apple", "banana", "orange"]
+        match, score = find_best_match_with_score("grapefruit", choices, threshold=90)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_empty_choices(self):
+        match, score = find_best_match_with_score("apple", [])
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_empty_query(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("", choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
 
 if __name__ == "__main__":
     unittest.main()

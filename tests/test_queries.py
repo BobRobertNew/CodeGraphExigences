@@ -98,5 +98,30 @@ class TestQueryHandler(unittest.TestCase):
         self.assertEqual(count, 1)
         self.assertEqual(nodes[0].id, "r1")
 
+    def test_find_most_similar_exigencies(self):
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "System shall run fast"})
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "The system must be secure"})
+        self.repo.add_node(exg1)
+        self.repo.add_node(exg2)
+
+        input_exigencies = ["System must run fast", "System must be secure", ""]
+
+        df = self.query_handler.find_most_similar_exigencies(input_exigencies)
+
+        self.assertEqual(len(df), 3)
+        self.assertEqual(list(df.columns), ["Input Exigence", "Best Match Exigence", "Similarity Score"])
+
+        self.assertEqual(df.iloc[0]["Input Exigence"], "System must run fast")
+        self.assertEqual(df.iloc[0]["Best Match Exigence"], "System shall run fast")
+        self.assertGreaterEqual(df.iloc[0]["Similarity Score"], 70)
+
+        self.assertEqual(df.iloc[1]["Input Exigence"], "System must be secure")
+        self.assertEqual(df.iloc[1]["Best Match Exigence"], "The system must be secure")
+        self.assertGreaterEqual(df.iloc[1]["Similarity Score"], 70)
+
+        self.assertEqual(df.iloc[2]["Input Exigence"], "")
+        self.assertTrue(pd.isna(df.iloc[2]["Best Match Exigence"]))
+        self.assertTrue(pd.isna(df.iloc[2]["Similarity Score"]))
+
 if __name__ == '__main__':
     unittest.main()

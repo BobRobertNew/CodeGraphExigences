@@ -2,7 +2,7 @@ import pandas as pd
 from typing import List, Dict, Any, Union, Set, Tuple, Optional
 from ..domain.entities import Node, NodeType
 from ..domain.ports import IGraphQuery
-from ..utils.text_utils import generate_short_id, find_best_match
+from ..utils.text_utils import generate_short_id, find_best_match, find_best_match_with_score
 from ..infrastructure.data_loader import load_and_clean_data
 
 class QueryHandler:
@@ -471,3 +471,32 @@ class QueryHandler:
 
         connected_nodes_list = list(connected_nodes_set)
         return len(connected_nodes_list), connected_nodes_list
+
+    def find_most_similar_exigencies(self, input_exigencies: List[str], threshold: int = 70) -> pd.DataFrame:
+        """
+        Takes a list of exigencies and looks into the graph for the most similar exigencies.
+
+        Args:
+            input_exigencies (List[str]): The list of input exigence descriptions.
+            threshold (int): The minimum fuzzy match score (0-100) to accept a match. Defaults to 70.
+
+        Returns:
+            pd.DataFrame: A DataFrame with the input exigencies, the best matching exigencies from the graph, and the similarity scores.
+        """
+        all_exigence_nodes = self.qry.get_nodes_by_type(NodeType.EXIGENCE)
+        graph_exigence_descriptions = [node.metadata.get("description", "") for node in all_exigence_nodes if node.metadata.get("description")]
+
+        results = []
+        for input_text in input_exigencies:
+            if not input_text:
+                results.append({"Input Exigence": input_text, "Best Match Exigence": None, "Similarity Score": None})
+                continue
+
+            best_match, score = find_best_match_with_score(input_text, graph_exigence_descriptions, threshold)
+            results.append({
+                "Input Exigence": input_text,
+                "Best Match Exigence": best_match,
+                "Similarity Score": score
+            })
+
+        return pd.DataFrame(results)
