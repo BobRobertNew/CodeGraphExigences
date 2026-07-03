@@ -1,5 +1,5 @@
 import hashlib
-from thefuzz import process
+from rapidfuzz import process
 from typing import List, Optional, Tuple
 
 def generate_short_id(prefix: str, text: str, length: int = 8) -> str:
