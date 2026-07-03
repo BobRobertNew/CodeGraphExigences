@@ -5,6 +5,8 @@ from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepositor
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
+from graph_tool.use_cases.renderers import PyVisRenderer, DatashaderRenderer
+
 from graph_tool.use_cases.storage import StorageHandler
 from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
 from graph_tool.domain.entities import NodeType
@@ -89,7 +91,7 @@ def main():
     # Question 1: Find similar projects to Project A based on its exigencies
     # Let's extract the exigencies text from Project A's dataframe for the query
     df_a = pd.read_excel(file_project_A)
-    exigencies_a = df_a["Exigences"].dropna().tolist()
+    exigencies_a = df_a["Exigence"].dropna().tolist()
 
     print(f"Question: What are the most similar projects to Project A?")
     similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2)
@@ -97,7 +99,7 @@ def main():
 
     # Question 2: Get useful REX for Project B based on its exigencies
     df_b = pd.read_excel(file_project_B)
-    exigencies_b = df_b["Exigences"].dropna().tolist()
+    exigencies_b = df_b["Exigence"].dropna().tolist()
 
     print(f"\nQuestion: Are there any useful REX for Project B from similar projects?")
     # This function uses the find_most_similar_projects internally to find REX
@@ -133,10 +135,17 @@ def main():
         print("Graph integrity looks perfect.")
 
     # Visualize the Graph
-    output_html = "graph_visualization.html"
-    print(f"\nGenerating HTML visualization of the graph...")
-    enhancements.visualize_graph(output_html)
-    print(f"Visualization saved to {output_html}. Open it in your browser to view the graph.")
+    print(f"\nGenerating visualizations of the graph...")
+
+    output_html_pyvis = "graph_visualization_pyvis.html"
+    print(f"  -> Rendering with PyVis...")
+    enhancements.visualize_graph(output_html_pyvis, renderer=PyVisRenderer())
+    print(f"     PyVis visualization saved to {output_html_pyvis}")
+
+    output_html_ds = "graph_visualization_datashader.html"
+    print(f"  -> Rendering with Datashader (force-directed layout)...")
+    enhancements.visualize_graph(output_html_ds, renderer=DatashaderRenderer(), layout='spring')
+    print(f"     Datashader visualization saved to {output_html_ds}")
 
     print("\n--- Saving the Graph ---")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
