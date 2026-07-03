@@ -41,3 +41,25 @@ def find_best_match(query: str, choices: List[str], threshold: int = 70) -> Opti
         if score >= threshold:
             return match
     return None
+
+def find_best_match_with_score(query: str, choices: List[str], threshold: int = 70) -> Tuple[Optional[str], Optional[int]]:
+    """
+    Finds the best matching string from a list of choices using fuzzy matching and returns the match and its score.
+
+    Args:
+        query (str): The target string to match.
+        choices (List[str]): A list of candidate strings.
+        threshold (int): The minimum fuzzy match score (0-100) to accept a match. Defaults to 70.
+
+    Returns:
+        Tuple[Optional[str], Optional[int]]: The best matching string and its score if its score meets the threshold, otherwise (None, None).
+    """
+    if not choices or not query:
+        return None, None
+
+    result = process.extractOne(query, choices)
+    if result:
+        match, score = result[0], result[1]
+        if score >= threshold:
+            return match, score
+    return None, None
