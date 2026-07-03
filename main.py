@@ -94,7 +94,7 @@ def main():
     exigencies_a = df_a["Exigence"].dropna().tolist()
 
     print(f"Question: What are the most similar projects to Project A?")
-    similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2)
+    similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2,exact_match=True)
     print(f"Answer: {similar_projects}")
 
     # Question 2: Get useful REX for Project B based on its exigencies
@@ -103,7 +103,7 @@ def main():
 
     print(f"\nQuestion: Are there any useful REX for Project B from similar projects?")
     # This function uses the find_most_similar_projects internally to find REX
-    useful_rex_ids = queries.get_useful_rex("Project B", exigencies_b)
+    useful_rex_ids = queries.get_useful_rex("Project B", exigencies_b,exact_match=True)
     print(f"Answer: Found {len(useful_rex_ids)} relevant REX.")
     for rex_id in useful_rex_ids:
         # Retrieve the node to display its details
