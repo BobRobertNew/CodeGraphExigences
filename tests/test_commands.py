@@ -128,5 +128,45 @@ class TestCommands(unittest.TestCase):
 
         self.assertIn("Neither 'REX Detail' nor 'Commentaire general' column is found", str(context.exception))
 
+    def test_add_rex_exact_match_only(self):
+        self.commands.add_project_exigences("ProjD", pd.DataFrame({
+            "Exigence": ["Exg4 Exact"]
+        }))
+
+        data = {
+            "Exigence": ["Exg4 Exact", "Exg4 Typo"],
+            "REX Detail": ["Detail 1", "Detail 2"]
+        }
+        df = pd.DataFrame(data)
+
+        def mock_loader(data_source):
+            return data_source
+
+        self.commands.add_rex("ProjD", df, loader=mock_loader, exact_match_only=True)
+
+        rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
+        self.assertEqual(len(rex_nodes), 1)
+        self.assertEqual(rex_nodes[0].metadata["description"], "Detail 1")
+
+    def test_add_specification_exact_match_only(self):
+        self.commands.add_project_exigences("ProjE", pd.DataFrame({
+            "Exigence": ["Exg5 Exact"]
+        }))
+
+        data = {
+            "Exigence": ["Exg5 Exact", "Exg5 Typo"]
+        }
+        df = pd.DataFrame(data)
+
+        self.commands.add_specification("SPEC-1", "Spec 1", df, exact_match_only=True)
+
+        # In exact match only, we expect only the exact match to be linked to spec
+        spec_nodes = self.repo.get_nodes_by_type(NodeType.SPECIFICATION)
+        self.assertEqual(len(spec_nodes), 1)
+
+        edges = self.repo.get_all_edges()
+        spec_edges = [e for e in edges if e.source_id == "SPEC-1" or e.target_id == "SPEC-1"]
+        self.assertEqual(len(spec_edges), 1)
+
 if __name__ == '__main__':
     unittest.main()
