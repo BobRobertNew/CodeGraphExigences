@@ -5,6 +5,8 @@ from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepositor
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
+from graph_tool.use_cases.renderers import PyVisRenderer, DatashaderRenderer
+
 from graph_tool.use_cases.storage import StorageHandler
 from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
 from graph_tool.domain.entities import NodeType
@@ -144,10 +146,17 @@ def main():
         print("Graph integrity looks perfect.")
 
     # Visualize the Graph
-    output_html = "graph_visualization.html"
-    print(f"\nGenerating HTML visualization of the graph...")
-    enhancements.visualize_graph(output_html)
-    print(f"Visualization saved to {output_html}. Open it in your browser to view the graph.")
+    print(f"\nGenerating visualizations of the graph...")
+
+    output_html_pyvis = "graph_visualization_pyvis.html"
+    print(f"  -> Rendering with PyVis...")
+    enhancements.visualize_graph(output_html_pyvis, renderer=PyVisRenderer())
+    print(f"     PyVis visualization saved to {output_html_pyvis}")
+
+    output_html_ds = "graph_visualization_datashader.html"
+    print(f"  -> Rendering with Datashader (force-directed layout)...")
+    enhancements.visualize_graph(output_html_ds, renderer=DatashaderRenderer(), layout='spring')
+    print(f"     Datashader visualization saved to {output_html_ds}")
 
     print("\n--- Saving the Graph ---")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
