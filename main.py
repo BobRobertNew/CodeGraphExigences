@@ -5,7 +5,7 @@ from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepositor
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
-from graph_tool.use_cases.renderers import PyVisRenderer, DatashaderRenderer
+from graph_tool.use_cases.renderers import PyVisRenderer #, DatashaderRenderer
 
 from graph_tool.use_cases.storage import StorageHandler
 from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
