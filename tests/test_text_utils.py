@@ -116,6 +116,20 @@ class TestTextUtils(unittest.TestCase):
         choices = {"b": "banana", "a": "apple"}
         self.assertEqual(find_best_match("apple", choices), "apple")
 
+    def test_find_best_match_case_sensitivity(self):
+        # rapidfuzz is case-sensitive by default
+        self.assertIsNone(find_best_match("apple", ["APPLE"]))
+
+    def test_find_best_match_type_error_on_integers(self):
+        # rapidfuzz does not automatically coerce ints to strings
+        with self.assertRaises(TypeError):
+            find_best_match("123", [123])
+
+    def test_find_best_match_emoji_handling(self):
+        # rapidfuzz does not strip emojis
+        choices = ["apple 🍎", "banana"]
+        self.assertEqual(find_best_match("apple", choices), "apple 🍎")
+
     def test_find_best_match_with_score_exact(self):
         choices = ["apple", "banana", "orange"]
         match, score = find_best_match_with_score("apple", choices)
