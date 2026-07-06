@@ -137,7 +137,7 @@ class QueryHandler:
         preuves_list = []
 
         for _, row in df_clean.iterrows():
-            exigence_text = str(row.get("Exigence", "")).strip()
+            exigence_text = str(row.get("Exigences", "")).strip()
             if not exigence_text:
                 phases_list.append("")
                 metiers_list.append("")
