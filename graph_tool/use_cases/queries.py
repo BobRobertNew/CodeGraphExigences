@@ -144,7 +144,7 @@ class QueryHandler:
                 preuves_list.append("")
                 continue
 
-            nodes = self._get_exigence_nodes_from_texts([exigence_text])
+            nodes = self._get_exigence_nodes_from_texts([exigence_text], exact_match=True)
             if not nodes:
                 phases_list.append("")
                 metiers_list.append("")
