@@ -117,7 +117,7 @@ class CommandHandler:
         for idx, row in df.iterrows():
             exigence_text = str(row.get(exigence_col, "")).strip()
             rex_detail_text = str(row.get(rex_col, "")).strip()
-            if not exigence_text:
+            if not exigence_text or not rex_detail_text:
                 continue
 
             target_exg = None
