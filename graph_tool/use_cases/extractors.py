@@ -60,9 +60,14 @@ class LegacyExigenceExtractionStep(IExtractionStep):
 
             # Phase Projet Node
             if phase_name:
-                phase_node = qry.find_node_by_exact_metadata("name", phase_name, NodeType.PHASE_PROJET)
+                if phase_name.lower().startswith("phase "):
+                    normalized_phase = phase_name[6:].strip().capitalize()
+                else:
+                    normalized_phase = phase_name.strip().capitalize()
+
+                phase_node = qry.find_node_by_exact_metadata("name", normalized_phase, NodeType.PHASE_PROJET)
                 if not phase_node:
-                    phase_node = Node(id=f"PHASE-{phase_name}", type=NodeType.PHASE_PROJET, metadata={"name": phase_name})
+                    phase_node = Node(id=f"PHASE-{normalized_phase}", type=NodeType.PHASE_PROJET, metadata={"name": normalized_phase})
                     cmd.add_node(phase_node)
                 cmd.add_edge(Edge(exg_node.id, phase_node.id))
 
@@ -180,9 +185,14 @@ class LinkPhaseProjetStep(IExtractionStep):
 
         for phase_name in possible_phases:
             if phase_name in df.columns:
-                phase_node = qry.find_node_by_exact_metadata("name", phase_name, NodeType.PHASE_PROJET)
+                if phase_name.lower().startswith("phase "):
+                    normalized_phase = phase_name[6:].strip().capitalize()
+                else:
+                    normalized_phase = phase_name.strip().capitalize()
+
+                phase_node = qry.find_node_by_exact_metadata("name", normalized_phase, NodeType.PHASE_PROJET)
                 if not phase_node:
-                    phase_node = Node(id=f"PHASE-{phase_name}", type=NodeType.PHASE_PROJET, metadata={"name": phase_name})
+                    phase_node = Node(id=f"PHASE-{normalized_phase}", type=NodeType.PHASE_PROJET, metadata={"name": normalized_phase})
                     cmd.add_node(phase_node)
 
                 for _, row in df.iterrows():
