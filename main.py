@@ -153,10 +153,12 @@ def main():
     enhancements.visualize_graph(output_html_pyvis, renderer=PyVisRenderer())
     print(f"     PyVis visualization saved to {output_html_pyvis}")
 
+    """
     output_html_ds = "graph_visualization_datashader.html"
     print(f"  -> Rendering with Datashader (force-directed layout)...")
     enhancements.visualize_graph(output_html_ds, renderer=DatashaderRenderer(), layout='spring')
     print(f"     Datashader visualization saved to {output_html_ds}")
+    """
 
     print("\n--- Saving the Graph ---")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
