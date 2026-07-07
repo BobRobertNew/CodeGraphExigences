@@ -51,7 +51,7 @@ def main():
 
     # Load REX for Project A
     print("Loading REX for Project A...")
-    commands.add_rex("Project A", file_rex_A)
+    commands.add_rex("Project A", file_rex_A,exact_match_only=True)
 
     print("\nData loaded successfully!")
 
