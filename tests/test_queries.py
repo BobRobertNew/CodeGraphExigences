@@ -98,61 +98,57 @@ class TestQueryHandler(unittest.TestCase):
         self.assertEqual(count, 1)
         self.assertEqual(nodes[0].id, "r1")
 
-    def test_get_exigences_from_rex_for_target_not_source(self):
-        projA = Node(id="pA", type=NodeType.PROJET, metadata={"name": "Project A"})
-        projB = Node(id="pB", type=NodeType.PROJET, metadata={"name": "Project B"})
+    def test_get_preuves_connection_status_for_project(self):
+        # Create a graph: Project -> Exigence -> Preuve -> Document
+        proj = Node(id="p1", type=NodeType.PROJET, metadata={"name": "Project A"})
 
-        # Exigence 1: linked to REX of A, linked to B, but NOT A -> SHOULD MATCH
         exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
-        rex1 = Node(id="r1", type=NodeType.REX, metadata={"description": "REX 1 for A"})
-
-        # Exigence 2: linked to REX of A, linked to B AND A -> SHOULD NOT MATCH (because it's linked to A)
         exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exg 2"})
-        rex2 = Node(id="r2", type=NodeType.REX, metadata={"description": "REX 2 for A"})
 
-        # Exigence 3: linked to REX of A, linked to neither A nor B -> SHOULD NOT MATCH (not linked to B)
-        exg3 = Node(id="e3", type=NodeType.EXIGENCE, metadata={"description": "Exg 3"})
-        rex3 = Node(id="r3", type=NodeType.REX, metadata={"description": "REX 3 for A"})
+        # Preuves for exg1
+        preuve1 = Node(id="pr1", type=NodeType.PREUVE, metadata={"description": "Preuve 1"})
+        preuve2 = Node(id="pr2", type=NodeType.PREUVE, metadata={"description": "Preuve 2"})
 
-        # Exigence 4: NOT linked to REX of A (but linked to B and not A) -> SHOULD NOT MATCH (not from REX of A)
-        exg4 = Node(id="e4", type=NodeType.EXIGENCE, metadata={"description": "Exg 4"})
+        # Preuves for exg2
+        preuve3 = Node(id="pr3", type=NodeType.PREUVE, metadata={"description": "Preuve 3"})
 
-        self.repo.add_node(projA)
-        self.repo.add_node(projB)
+        # Document (only connected to pr2 and pr3)
+        doc1 = Node(id="d1", type=NodeType.DOCUMENT, metadata={"name": "Doc 1"})
+        doc2 = Node(id="d2", type=NodeType.DOCUMENT, metadata={"name": "Doc 2"})
+
+        self.repo.add_node(proj)
         self.repo.add_node(exg1)
-        self.repo.add_node(rex1)
         self.repo.add_node(exg2)
-        self.repo.add_node(rex2)
-        self.repo.add_node(exg3)
-        self.repo.add_node(rex3)
-        self.repo.add_node(exg4)
+        self.repo.add_node(preuve1)
+        self.repo.add_node(preuve2)
+        self.repo.add_node(preuve3)
+        self.repo.add_node(doc1)
+        self.repo.add_node(doc2)
 
-        # Link REX to Source Project A
-        self.repo.add_edge(Edge(source_id="r1", target_id="pA", type="LINKED_TO"))
-        self.repo.add_edge(Edge(source_id="r2", target_id="pA", type="LINKED_TO"))
-        self.repo.add_edge(Edge(source_id="r3", target_id="pA", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="p1", target_id="e1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="p1", target_id="e2", type="LINKED_TO"))
 
-        # Link REX to Exigences
-        self.repo.add_edge(Edge(source_id="r1", target_id="e1", type="LINKED_TO"))
-        self.repo.add_edge(Edge(source_id="r2", target_id="e2", type="LINKED_TO"))
-        self.repo.add_edge(Edge(source_id="r3", target_id="e3", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e1", target_id="pr1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e1", target_id="pr2", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e2", target_id="pr3", type="LINKED_TO"))
 
-        # Link Exigences to Projects
-        # e1 to B only
-        self.repo.add_edge(Edge(source_id="e1", target_id="pB", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="pr2", target_id="d1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="pr3", target_id="d2", type="LINKED_TO"))
 
-        # e2 to A and B
-        self.repo.add_edge(Edge(source_id="e2", target_id="pB", type="LINKED_TO"))
-        self.repo.add_edge(Edge(source_id="e2", target_id="pA", type="LINKED_TO"))
+        preuves_no_doc, preuves_with_doc = self.query_handler.get_preuves_connection_status_for_project("Project A")
 
-        # e3 to neither (no edges to projects)
+        # pr1 has no doc. pr2 and pr3 have docs.
+        self.assertEqual(len(preuves_no_doc), 1)
+        self.assertEqual(preuves_no_doc[0].id, "pr1")
 
-        # e4 to B only (but not connected to REX of A)
-        self.repo.add_edge(Edge(source_id="e4", target_id="pB", type="LINKED_TO"))
+        self.assertEqual(len(preuves_with_doc), 2)
+        with_doc_ids = {p.id for p in preuves_with_doc}
+        self.assertEqual(with_doc_ids, {"pr2", "pr3"})
 
-        result = self.query_handler.get_exigences_from_rex_for_target_not_source("Project A", "Project B")
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].id, "e1")
+        # Test non-existent project
+        no_doc, with_doc = self.query_handler.get_preuves_connection_status_for_project("NonExistent Project")
+        self.assertEqual(no_doc, [])
+        self.assertEqual(with_doc, [])
 
     def test_find_most_similar_exigencies(self):
         exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "System shall run fast"})

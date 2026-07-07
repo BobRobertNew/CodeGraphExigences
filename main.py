@@ -51,7 +51,7 @@ def main():
 
     # Load REX for Project A
     print("Loading REX for Project A...")
-    commands.add_rex("Project A", file_rex_A)
+    commands.add_rex("Project A", file_rex_A,exact_match_only=True)
 
     print("\nData loaded successfully!")
 
@@ -111,7 +111,7 @@ def main():
     # This function uses the find_most_similar_projects internally to find REX
     useful_rex_ids = queries.get_useful_rex("Project B", exigencies_b,exact_match=True)
     print(f"Answer: Found {len(useful_rex_ids)} relevant REX.")
-    for rex_id in useful_rex_ids:
+    for rex_id in useful_rex_ids[:3]:
         # Retrieve the node to display its details
         node = repo.get_node(rex_id)
         if node:
@@ -159,10 +159,12 @@ def main():
     enhancements.visualize_graph(output_html_pyvis, renderer=PyVisRenderer())
     print(f"     PyVis visualization saved to {output_html_pyvis}")
 
+    """
     output_html_ds = "graph_visualization_datashader.html"
     print(f"  -> Rendering with Datashader (force-directed layout)...")
     enhancements.visualize_graph(output_html_ds, renderer=DatashaderRenderer(), layout='spring')
     print(f"     Datashader visualization saved to {output_html_ds}")
+    """
 
     print("\n--- Saving the Graph ---")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

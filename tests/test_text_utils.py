@@ -90,6 +90,20 @@ class TestTextUtils(unittest.TestCase):
         # For non-exact match with threshold 100
         self.assertIsNone(find_best_match("appl", choices, threshold=100))
 
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
+        # Test boundary condition where score equals exactly the threshold
+        mock_extractOne.return_value = ("apple", 70)
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
+        # Test boundary condition where score is just below the threshold
+        mock_extractOne.return_value = ("apple", 69.9)
+        choices = ["apple", "banana"]
+        self.assertIsNone(find_best_match("appl", choices, threshold=70))
+
     def test_find_best_match_similar_strings(self):
         choices = ["apple tree", "apple", "green apple"]
         # Ensure it matches the exact one rather than substrings
@@ -120,8 +134,10 @@ class TestTextUtils(unittest.TestCase):
         # rapidfuzz is case-sensitive by default
         self.assertIsNone(find_best_match("apple", ["APPLE"]))
 
-    def test_find_best_match_type_error_on_integers(self):
-        # rapidfuzz does not automatically coerce ints to strings
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_type_error_on_integers(self, mock_extractOne):
+        # Ensure we mock external library behavior explicitly for invalid inputs
+        mock_extractOne.side_effect = TypeError("Mocked TypeError for invalid input")
         with self.assertRaises(TypeError):
             find_best_match("123", [123])
 

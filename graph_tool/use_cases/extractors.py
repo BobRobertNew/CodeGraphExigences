@@ -195,3 +195,90 @@ class LinkPhaseProjetStep(IExtractionStep):
                             if exg_node:
                                 # Link Exigence -> Phase projet
                                 cmd.add_edge(Edge(exg_node.id, phase_node.id))
+
+
+class LinkPreuveStep(IExtractionStep):
+    """
+    Extracts PREUVE nodes from "XX_Preuve de conformité" columns where "XX_Concerné" is "X".
+    Connects the PREUVE node to the Exigence, Métier, and Phase Projet.
+    """
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+        import re
+
+        if "Exigences" in df.columns:
+            exigence_col = "Exigences"
+        elif "Exigence" in df.columns:
+            exigence_col = "Exigence"
+        else:
+            return
+
+        metier_cols = [col for col in df.columns if str(col).endswith("_Concerné")]
+
+        for col in metier_cols:
+            metier_name = str(col).replace("_Concerné", "").strip()
+            if not metier_name:
+                continue
+
+            preuve_col = f"{metier_name}_Preuve de conformité"
+            if preuve_col not in df.columns:
+                continue
+
+            metier_node = qry.find_node_by_exact_metadata("name", metier_name, NodeType.METIER)
+            if not metier_node:
+                metier_node = Node(id=f"METIER-{metier_name}", type=NodeType.METIER, metadata={"name": metier_name})
+                cmd.add_node(metier_node)
+
+            for _, row in df.iterrows():
+                exigence_text = str(row.get(exigence_col, "")).strip()
+                if not exigence_text:
+                    continue
+
+                exg_id = generate_short_id("EXG", exigence_text)
+                exg_node = qry.get_node(exg_id)
+                if not exg_node:
+                    continue
+
+                val = str(row.get(col, "")).strip().upper()
+                if "X" in val:
+                    preuve_text = str(row.get(preuve_col, "")).strip()
+                    if not preuve_text:
+                        continue
+
+                    # Regex pattern to match Phase YYY: where YYY can be Conception, Exploitation, Commun, Etude, Contrat, Réalisation
+                    pattern = r"(?i)Phase\s+(Conception|Exploitation|Commun|Etude|Contrat|Réalisation)\s*:"
+                    matches = list(re.finditer(pattern, preuve_text))
+
+                    if not matches:
+                        continue
+
+                    for i, match in enumerate(matches):
+                        phase_name = match.group(1).capitalize()
+
+                        actual_phase_name = phase_name
+
+                        start_idx = match.end()
+                        end_idx = matches[i+1].start() if i+1 < len(matches) else len(preuve_text)
+
+                        content = preuve_text[start_idx:end_idx].strip()
+                        if not content:
+                            continue
+
+                        # Ensure Phase Node exists
+                        phase_node = qry.find_node_by_exact_metadata("name", actual_phase_name, NodeType.PHASE_PROJET)
+                        if not phase_node:
+                            phase_node = Node(id=f"PHASE-{actual_phase_name}", type=NodeType.PHASE_PROJET, metadata={"name": actual_phase_name})
+                            cmd.add_node(phase_node)
+
+                        # Create Preuve Node
+                        preuve_id = generate_short_id("PRV", content)
+                        # We might need to ensure unique ID if the content is exactly the same for different phases/metiers, but short_id generates based on content.
+                        # Wait, the prompt says "use generate_short_id to get a short ID and put the text of the preuve in the description."
+                        preuve_node = qry.get_node(preuve_id)
+                        if not preuve_node:
+                            preuve_node = Node(id=preuve_id, type=NodeType.PREUVE, metadata={"description": content})
+                            cmd.add_node(preuve_node)
+
+                        # Connect Preuve to Exigence, Metier, and Phase
+                        cmd.add_edge(Edge(preuve_node.id, exg_node.id))
+                        cmd.add_edge(Edge(preuve_node.id, metier_node.id))
+                        cmd.add_edge(Edge(preuve_node.id, phase_node.id))

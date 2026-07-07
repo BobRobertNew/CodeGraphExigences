@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 graph_visualization.html
 doc/build/
+.coverage
+.pytest_cache/
