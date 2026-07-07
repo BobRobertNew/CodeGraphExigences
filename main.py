@@ -177,6 +177,17 @@ def main():
     print(f"     Datashader visualization saved to {output_html_ds}")
     """
 
+    print(f"  -> Generating Venn Diagram of Shared Exigences...")
+    venn_filename = f"venn_diagram_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html"
+    res_venn = enhancements.generate_venn_diagram_html(
+        ensemble_type=NodeType.PROJET,
+        element_type=NodeType.EXIGENCE,
+        target_ensembles=["Project A", "Project B", "Project C"],
+        output_file=venn_filename
+    )
+    if res_venn:
+        print(f"     Venn diagram saved to {res_venn}")
+
     print("\n--- Saving the Graph ---")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     save_filename = f"graph_{timestamp}.graphml"
