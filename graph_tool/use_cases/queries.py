@@ -472,6 +472,39 @@ class QueryHandler:
         connected_nodes_list = list(connected_nodes_set)
         return len(connected_nodes_list), connected_nodes_list
 
+    def get_preuves_connection_status_for_project(self, project_name: str) -> Tuple[List[Node], List[Node]]:
+        """
+        Retrieves two lists of Preuve nodes for a specific project:
+        1. Preuve nodes that are NOT connected to a Document node.
+        2. Preuve nodes that ARE connected to a Document node.
+
+        Args:
+            project_name (str): The name of the project to analyze.
+
+        Returns:
+            Tuple[List[Node], List[Node]]: A tuple containing two lists:
+                - List of Preuve nodes without a connected Document.
+                - List of Preuve nodes with a connected Document.
+        """
+        proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
+        if not proj_node:
+            return [], []
+
+        preuves_without_document = set()
+        preuves_with_document = set()
+
+        exigences = self.qry.get_neighbors(proj_node.id, NodeType.EXIGENCE)
+        for exg in exigences:
+            preuves = self.qry.get_neighbors(exg.id, NodeType.PREUVE)
+            for p in preuves:
+                documents = self.qry.get_neighbors(p.id, NodeType.DOCUMENT)
+                if documents:
+                    preuves_with_document.add(p)
+                else:
+                    preuves_without_document.add(p)
+
+        return list(preuves_without_document), list(preuves_with_document)
+
     def find_most_similar_exigencies(self, input_exigencies: List[str], threshold: int = 70) -> pd.DataFrame:
         """
         Takes a list of exigencies and looks into the graph for the most similar exigencies.

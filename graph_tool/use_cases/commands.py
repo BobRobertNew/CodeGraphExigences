@@ -5,7 +5,7 @@ from ..domain.entities import Node, Edge, NodeType
 from ..domain.ports import IGraphCommand, IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match
 from ..infrastructure.data_loader import load_and_clean_data, clean_dataframe
-from .extractors import IExtractionStep, LegacyExigenceExtractionStep
+from .extractors import IExtractionStep, LegacyExigenceExtractionStep, LinkPreuveStep
 
 class CommandHandler:
     """
@@ -66,6 +66,33 @@ class CommandHandler:
 
         for step in steps:
             step.execute(df, proj_node, self.cmd, self.qry)
+
+    def add_preuves(
+        self,
+        data_source: Union[str, pd.DataFrame],
+        loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
+        steps: List[IExtractionStep] = None
+    ):
+        """
+        Adds PREUVE nodes to the graph by extracting them from the data source.
+        Models after `add_project_exigences` using extractors.
+
+        Args:
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+            loader (Callable): Function to load the data_source into a DataFrame.
+            steps (List[IExtractionStep]): List of extraction steps to apply. If None, uses LinkPreuveStep.
+        """
+        df = loader(data_source)
+        if loader != load_and_clean_data:
+            df = clean_dataframe(df)
+
+        # Run extraction steps
+        if steps is None:
+            steps = [LinkPreuveStep()]
+
+        # Pass None for proj_node as add_preuves does not take a project name
+        for step in steps:
+            step.execute(df, None, self.cmd, self.qry)
 
     def add_rex(
         self,

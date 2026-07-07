@@ -168,5 +168,40 @@ class TestCommands(unittest.TestCase):
         spec_edges = [e for e in edges if e.source_id == "SPEC-1" or e.target_id == "SPEC-1"]
         self.assertEqual(len(spec_edges), 1)
 
+    def test_add_preuves(self):
+        # Initial project and exigences
+        from graph_tool.utils.text_utils import generate_short_id
+        from graph_tool.domain.entities import Node
+
+        exigence_text = "Exigence Preuve"
+        exg_id = generate_short_id("EXG", exigence_text)
+        exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
+        self.repo.add_node(exg_node)
+
+        data = {
+            "Exigences": [exigence_text],
+            "MétierX_Concerné": ["x"],
+            "MétierX_Preuve de conformité": ["Phase Contrat: contract text"]
+        }
+        df = pd.DataFrame(data)
+
+        # Simulating the loader behavior with a custom function
+        def mock_loader(data_source):
+            return data_source
+
+        self.commands.add_preuves(data_source=df, loader=mock_loader)
+
+        preuves = self.repo.get_nodes_by_type(NodeType.PREUVE)
+        self.assertEqual(len(preuves), 1)
+        self.assertEqual(preuves[0].metadata["description"], "contract text")
+
+        metiers = self.repo.get_nodes_by_type(NodeType.METIER)
+        self.assertEqual(len(metiers), 1)
+        self.assertEqual(metiers[0].metadata["name"], "MétierX")
+
+        phases = self.repo.get_nodes_by_type(NodeType.PHASE_PROJET)
+        self.assertEqual(len(phases), 1)
+        self.assertEqual(phases[0].metadata["name"], "Contrat")
+
 if __name__ == '__main__':
     unittest.main()

@@ -118,5 +118,60 @@ class TestExtractors(unittest.TestCase):
             if os.path.exists(filepath):
                 os.remove(filepath)
 
+    def test_link_preuve_step(self):
+        # We need an Exigence to link to
+        exigence_text = "Test Exigence"
+        from graph_tool.utils.text_utils import generate_short_id
+        exg_id = generate_short_id("EXG", exigence_text)
+        exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
+        self.cmd_handler.cmd.add_node(exg_node)
+
+        data = {
+            "Exigences": [exigence_text],
+            "MétierA_Concerné": ["X"],
+            "MétierA_Preuve de conformité": ["Phase Etude: text 1. Phase Conception: text 2"]
+        }
+        df = pd.DataFrame(data)
+
+        from graph_tool.use_cases.extractors import LinkPreuveStep
+        step = LinkPreuveStep()
+        step.execute(df, None, self.cmd_handler.cmd, self.cmd_handler.qry)
+
+        preuves = self.repo.get_nodes_by_type(NodeType.PREUVE)
+        self.assertEqual(len(preuves), 2)
+
+        preuve_texts = [p.metadata["description"] for p in preuves]
+        self.assertIn("text 1.", preuve_texts)
+        self.assertIn("text 2", preuve_texts)
+
+        phases = self.repo.get_nodes_by_type(NodeType.PHASE_PROJET)
+        self.assertEqual(len(phases), 2)
+        phase_names = [p.metadata["name"] for p in phases]
+        self.assertIn("Etude", phase_names)
+        self.assertIn("Conception", phase_names)
+
+        metiers = self.repo.get_nodes_by_type(NodeType.METIER)
+        self.assertEqual(len(metiers), 1)
+        self.assertEqual(metiers[0].metadata["name"], "MétierA")
+
+        edges = self.repo.get_all_edges()
+
+        # Verify connections to the specific Preuve "text 1."
+        prv_text1 = [p for p in preuves if p.metadata["description"] == "text 1."][0]
+        linked_to_prv = [e for e in edges if e.source_id == prv_text1.id or e.target_id == prv_text1.id]
+
+        # Should be linked to Exigence, Metier, and Phase Projet
+        self.assertEqual(len(linked_to_prv), 3)
+
+        # In the extraction logic, edges are created with Preuve as the source or target depending on how it's implemented.
+        # However, checking the edges list directly for the connected node ids is safer.
+        connected_ids = [e.target_id if e.source_id == prv_text1.id else e.source_id for e in linked_to_prv]
+
+        self.assertIn(exg_id, connected_ids)
+        self.assertIn(metiers[0].id, connected_ids)
+
+        phase_etude = [p for p in phases if p.metadata["name"] == "Etude"][0]
+        self.assertIn(phase_etude.id, connected_ids)
+
 if __name__ == '__main__':
     unittest.main()
