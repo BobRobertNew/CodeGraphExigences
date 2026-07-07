@@ -183,5 +183,62 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_generators(self):
+        # rapidfuzz extractOne supports generic iterables
+        choices = (x for x in ["apple", "banana"])
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+    def test_find_best_match_empty_generator(self):
+        # Because bool(generator) is True, the `if not choices:` check passes it through
+        # and rapidfuzz handles empty generators by returning None
+        choices = (x for x in [])
+        self.assertIsNone(find_best_match("apple", choices))
+
+    def test_find_best_match_out_of_bounds_threshold(self):
+        choices = ["apple", "banana"]
+        # Threshold > 100 should never match since max score is 100
+        self.assertIsNone(find_best_match("apple", choices, threshold=105))
+        # Threshold < 0 should act like threshold 0
+        self.assertEqual(find_best_match("apple", choices, threshold=-10), "apple")
+        # Floating point threshold
+        self.assertEqual(find_best_match("apple", choices, threshold=99.9), "apple")
+        self.assertIsNone(find_best_match("appl", choices, threshold=99.9))
+
+    def test_find_best_match_tie_breaking(self):
+        # rapidfuzz returns the first best match it encounters when there is a tie
+        choices1 = ["cat", "bat"]
+        choices2 = ["bat", "cat"]
+        # "mat" matches "cat" and "bat" with the same score (66.66...)
+        self.assertEqual(find_best_match("mat", choices1, threshold=60), "cat")
+        self.assertEqual(find_best_match("mat", choices2, threshold=60), "bat")
+
+    def test_find_best_match_whitespace_only(self):
+        choices = ["   ", "\t", "\n"]
+        self.assertEqual(find_best_match("   ", choices, threshold=100), "   ")
+        # Query is all whitespace, matching a normal string
+        self.assertIsNone(find_best_match("   ", ["apple", "banana"]))
+
+    def test_find_best_match_newlines(self):
+        choices = ["apple\nbanana", "apple banana"]
+        self.assertEqual(find_best_match("apple\nbanana", choices, threshold=100), "apple\nbanana")
+        # fuzzy matching with differing whitespaces
+        self.assertEqual(find_best_match("apple\r\nbanana", choices, threshold=90), "apple\nbanana")
+
+    def test_find_best_match_unicode(self):
+        choices = ["こんにちは", "さようなら"]
+        self.assertEqual(find_best_match("こんにちは", choices, threshold=100), "こんにちは")
+        # Not a match
+        self.assertIsNone(find_best_match("こんばんわ", choices, threshold=90))
+
+    def test_find_best_match_long_strings(self):
+        long_query = "a" * 1000
+        choices = ["a" * 1000, "b" * 1000]
+        self.assertEqual(find_best_match(long_query, choices), "a" * 1000)
+
+        # 1 character off in a 1000 char string should have a very high score
+        almost_query = "a" * 999 + "b"
+        self.assertEqual(find_best_match(almost_query, choices, threshold=99), "a" * 1000)
+
+
 if __name__ == "__main__":
     unittest.main()
