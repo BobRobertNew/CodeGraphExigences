@@ -158,6 +158,57 @@ class QueryHandler:
 
         return list(useful_rex)
 
+
+    def get_preuves_and_phases_for_exigences(self, data_source: Union[str, pd.DataFrame]) -> pd.DataFrame:
+        """
+        Reads a list of Exigences from the data source, looks for them in the graph,
+        and retrieves their connected 'Preuve' and 'Phase projet' nodes.
+        Returns a DataFrame with columns 'Exigences', 'Phase', 'Preuve'.
+        Duplicates the row if there are multiple phases or preuves.
+        If an Exigence is not found, its 'Phase' and 'Preuve' will be empty.
+
+        Args:
+            data_source (Union[str, pd.DataFrame]): Path to the excel file or DataFrame.
+
+        Returns:
+            pd.DataFrame: A new DataFrame with the requested format.
+        """
+        df = load_and_clean_data(data_source)
+
+        results = []
+        for _, row in df.iterrows():
+            exigence_text = str(row.get("Exigences", "")).strip()
+            if not exigence_text:
+                continue
+
+            nodes = self._get_exigence_nodes_from_texts([exigence_text], exact_match=True)
+            if not nodes:
+                results.append({"Exigences": exigence_text, "Phase": "", "Preuve": ""})
+                continue
+
+            exg_node = nodes[0]
+            neighbors = self.qry.get_neighbors(exg_node.id)
+
+            phases = [n.metadata.get("name", "") for n in neighbors if n.type == NodeType.PHASE_PROJET]
+            preuves = [n.metadata.get("description", "") for n in neighbors if n.type == NodeType.PREUVE]
+
+            if not phases and not preuves:
+                results.append({"Exigences": exigence_text, "Phase": "", "Preuve": ""})
+            else:
+                if not phases:
+                    phases = [""]
+                if not preuves:
+                    preuves = [""]
+
+                # The prompt asks for: "Get also the «Phase» type node connected to each «preuve»."
+                # However, in our schema, 'Phase' and 'Preuve' are both connected to 'Exigence', not directly to each other.
+                # So we cross join phases and preuves for the current exigence.
+                for phase in phases:
+                    for preuve in preuves:
+                        results.append({"Exigences": exigence_text, "Phase": phase, "Preuve": preuve})
+
+        return pd.DataFrame(results)
+
     def complete_excel_with_graph_info(self, data_source: Union[str, pd.DataFrame]) -> pd.DataFrame:
         """
         Takes an excel/dataframe with an 'Exigence' column, searches the graph, and appends

@@ -1,0 +1,155 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 750px;
+                 background-color: #222222;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+
+
+
+
+
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+
+
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+
+
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+
+
+
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#FF5733", "font": {"color": "white"}, "id": "PROJ-Project A", "label": "Project A", "shape": "dot", "title": "Type: Projet\u003cbr\u003eID: PROJ-Project A\u003cbr\u003ename: Project A\u003cbr\u003e"}, {"color": "#FF5733", "font": {"color": "white"}, "id": "PROJ-Project B", "label": "Project B", "shape": "dot", "title": "Type: Projet\u003cbr\u003eID: PROJ-Project B\u003cbr\u003ename: Project B\u003cbr\u003e"}, {"color": "#FF5733", "font": {"color": "white"}, "id": "PROJ-Project C", "label": "Project C", "shape": "dot", "title": "Type: Projet\u003cbr\u003eID: PROJ-Project C\u003cbr\u003ename: Project C\u003cbr\u003e"}, {"color": "#33FF57", "font": {"color": "white"}, "id": "EXG-5DF65FA9", "label": "User passwords mu...", "shape": "dot", "title": "Type: Exigence\u003cbr\u003eID: EXG-5DF65FA9\u003cbr\u003edescription: User passwords must be hashed.\u003cbr\u003e"}, {"color": "#3357FF", "font": {"color": "white"}, "id": "LOI-Loi 4", "label": "Loi 4", "shape": "dot", "title": "Type: Loi\u003cbr\u003eID: LOI-Loi 4\u003cbr\u003ename: Loi 4\u003cbr\u003e"}, {"color": "#F333FF", "font": {"color": "white"}, "id": "PHASE-Implementation", "label": "Implementation", "shape": "dot", "title": "Type: Phase projet\u003cbr\u003eID: PHASE-Implementation\u003cbr\u003ename: Implementation\u003cbr\u003e"}, {"color": "#33FFF3", "font": {"color": "white"}, "id": "METIER-Security", "label": "Security", "shape": "dot", "title": "Type: M\u00e9tier\u003cbr\u003eID: METIER-Security\u003cbr\u003ename: Security\u003cbr\u003e"}, {"color": "#FF338C", "font": {"color": "white"}, "id": "PRV-7EFBF220", "label": "Security audit", "shape": "dot", "title": "Type: Preuve de conformit\u00e9\u003cbr\u003eID: PRV-7EFBF220\u003cbr\u003edescription: Security audit\u003cbr\u003e"}, {"color": "#33FF57", "font": {"color": "white"}, "id": "EXG-05C3B8E9", "label": "The application m...", "shape": "dot", "title": "Type: Exigence\u003cbr\u003eID: EXG-05C3B8E9\u003cbr\u003edescription: The application must support multi-language.\u003cbr\u003e"}, {"color": "#3357FF", "font": {"color": "white"}, "id": "LOI-Loi 5", "label": "Loi 5", "shape": "dot", "title": "Type: Loi\u003cbr\u003eID: LOI-Loi 5\u003cbr\u003ename: Loi 5\u003cbr\u003e"}, {"color": "#F333FF", "font": {"color": "white"}, "id": "PHASE-Design", "label": "Design", "shape": "dot", "title": "Type: Phase projet\u003cbr\u003eID: PHASE-Design\u003cbr\u003ename: Design\u003cbr\u003e"}, {"color": "#33FFF3", "font": {"color": "white"}, "id": "METIER-Frontend", "label": "Frontend", "shape": "dot", "title": "Type: M\u00e9tier\u003cbr\u003eID: METIER-Frontend\u003cbr\u003ename: Frontend\u003cbr\u003e"}, {"color": "#FF338C", "font": {"color": "white"}, "id": "PRV-E71A88C9", "label": "Translation files", "shape": "dot", "title": "Type: Preuve de conformit\u00e9\u003cbr\u003eID: PRV-E71A88C9\u003cbr\u003edescription: Translation files\u003cbr\u003e"}, {"color": "#FFF333", "font": {"color": "white"}, "id": "REX-Project A-EXG-5DF65FA9", "label": "We used AWS Auto ...", "shape": "dot", "title": "Type: REX\u003cbr\u003eID: REX-Project A-EXG-5DF65FA9\u003cbr\u003edescription: We used AWS Auto Scaling, it worked perfectly.\u003cbr\u003e"}, {"color": "#FFF333", "font": {"color": "white"}, "id": "REX-Project A-EXG-05C3B8E9", "label": "CSS Grid was very...", "shape": "dot", "title": "Type: REX\u003cbr\u003eID: REX-Project A-EXG-05C3B8E9\u003cbr\u003edescription: CSS Grid was very helpful for the UI.\u003cbr\u003e"}]);
+                  edges = new vis.DataSet([{"from": "PROJ-Project A", "title": "LINKED_TO", "to": "REX-Project A-EXG-5DF65FA9"}, {"from": "PROJ-Project A", "title": "LINKED_TO", "to": "REX-Project A-EXG-05C3B8E9"}, {"from": "PROJ-Project C", "title": "LINKED_TO", "to": "EXG-5DF65FA9"}, {"from": "PROJ-Project C", "title": "LINKED_TO", "to": "EXG-05C3B8E9"}, {"from": "EXG-5DF65FA9", "title": "LINKED_TO", "to": "LOI-Loi 4"}, {"from": "EXG-5DF65FA9", "title": "LINKED_TO", "to": "PHASE-Implementation"}, {"from": "EXG-5DF65FA9", "title": "LINKED_TO", "to": "METIER-Security"}, {"from": "EXG-5DF65FA9", "title": "LINKED_TO", "to": "PRV-7EFBF220"}, {"from": "EXG-5DF65FA9", "title": "LINKED_TO", "to": "REX-Project A-EXG-5DF65FA9"}, {"from": "EXG-05C3B8E9", "title": "LINKED_TO", "to": "LOI-Loi 5"}, {"from": "EXG-05C3B8E9", "title": "LINKED_TO", "to": "PHASE-Design"}, {"from": "EXG-05C3B8E9", "title": "LINKED_TO", "to": "METIER-Frontend"}, {"from": "EXG-05C3B8E9", "title": "LINKED_TO", "to": "PRV-E71A88C9"}, {"from": "EXG-05C3B8E9", "title": "LINKED_TO", "to": "REX-Project A-EXG-05C3B8E9"}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+
+
+
+
+
+                  network = new vis.Network(container, data, options);
+
+
+
+
+
+
+
+
+
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

@@ -1,0 +1,111 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d3" for="edge" attr.name="type" attr.type="string" />
+  <key id="d2" for="node" attr.name="description" attr.type="string" />
+  <key id="d1" for="node" attr.name="type" attr.type="string" />
+  <key id="d0" for="node" attr.name="name" attr.type="string" />
+  <graph edgedefault="undirected">
+    <node id="PROJ-Project A">
+      <data key="d0">Project A</data>
+      <data key="d1">Projet</data>
+    </node>
+    <node id="PROJ-Project B">
+      <data key="d0">Project B</data>
+      <data key="d1">Projet</data>
+    </node>
+    <node id="PROJ-Project C">
+      <data key="d0">Project C</data>
+      <data key="d1">Projet</data>
+    </node>
+    <node id="EXG-5DF65FA9">
+      <data key="d2">User passwords must be hashed.</data>
+      <data key="d1">Exigence</data>
+    </node>
+    <node id="LOI-Loi 4">
+      <data key="d0">Loi 4</data>
+      <data key="d1">Loi</data>
+    </node>
+    <node id="PHASE-Implementation">
+      <data key="d0">Implementation</data>
+      <data key="d1">Phase projet</data>
+    </node>
+    <node id="METIER-Security">
+      <data key="d0">Security</data>
+      <data key="d1">Métier</data>
+    </node>
+    <node id="PRV-7EFBF220">
+      <data key="d2">Security audit</data>
+      <data key="d1">Preuve de conformité</data>
+    </node>
+    <node id="EXG-05C3B8E9">
+      <data key="d2">The application must support multi-language.</data>
+      <data key="d1">Exigence</data>
+    </node>
+    <node id="LOI-Loi 5">
+      <data key="d0">Loi 5</data>
+      <data key="d1">Loi</data>
+    </node>
+    <node id="PHASE-Design">
+      <data key="d0">Design</data>
+      <data key="d1">Phase projet</data>
+    </node>
+    <node id="METIER-Frontend">
+      <data key="d0">Frontend</data>
+      <data key="d1">Métier</data>
+    </node>
+    <node id="PRV-E71A88C9">
+      <data key="d2">Translation files</data>
+      <data key="d1">Preuve de conformité</data>
+    </node>
+    <node id="REX-Project A-EXG-5DF65FA9">
+      <data key="d2">We used AWS Auto Scaling, it worked perfectly.</data>
+      <data key="d1">REX</data>
+    </node>
+    <node id="REX-Project A-EXG-05C3B8E9">
+      <data key="d2">CSS Grid was very helpful for the UI.</data>
+      <data key="d1">REX</data>
+    </node>
+    <edge source="PROJ-Project A" target="REX-Project A-EXG-5DF65FA9">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="PROJ-Project A" target="REX-Project A-EXG-05C3B8E9">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="PROJ-Project C" target="EXG-5DF65FA9">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="PROJ-Project C" target="EXG-05C3B8E9">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-5DF65FA9" target="LOI-Loi 4">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-5DF65FA9" target="PHASE-Implementation">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-5DF65FA9" target="METIER-Security">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-5DF65FA9" target="PRV-7EFBF220">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-5DF65FA9" target="REX-Project A-EXG-5DF65FA9">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-05C3B8E9" target="LOI-Loi 5">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-05C3B8E9" target="PHASE-Design">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-05C3B8E9" target="METIER-Frontend">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-05C3B8E9" target="PRV-E71A88C9">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+    <edge source="EXG-05C3B8E9" target="REX-Project A-EXG-05C3B8E9">
+      <data key="d3">LINKED_TO</data>
+    </edge>
+  </graph>
+</graphml>

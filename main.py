@@ -5,7 +5,7 @@ from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepositor
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
-from graph_tool.use_cases.renderers import PyVisRenderer, DatashaderRenderer
+from graph_tool.use_cases.renderers import PyVisRenderer #, DatashaderRenderer
 
 from graph_tool.use_cases.storage import StorageHandler
 from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
@@ -140,6 +140,17 @@ def main():
     similar_exigencies_filename = f"similar_exigencies_{timestamp}.xlsx"
     similar_exigencies_df.to_excel(similar_exigencies_filename, index=False)
     print(f"Answer: Found similar exigencies. Results saved to {similar_exigencies_filename}")
+
+    # NEW QUESTION
+    print(f"\nQuestion: Can we get the list of Preuves and Phases for a specific list of Exigences?")
+    input_file_path = "input_file.xlsx"
+    if os.path.exists(input_file_path):
+        preuves_df = queries.get_preuves_and_phases_for_exigences(input_file_path)
+        output_file_path = "export_list_preuves_attendues.xlsx"
+        preuves_df.to_excel(output_file_path, index=False)
+        print(f"Answer: Yes. Results saved to {output_file_path}")
+    else:
+        print(f"Answer: Could not find {input_file_path}.")
 
     print("\n--- Enhancements ---")
 
