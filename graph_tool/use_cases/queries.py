@@ -83,6 +83,46 @@ class QueryHandler:
         sorted_projects = sorted(project_scores.items(), key=lambda item: item[1], reverse=True)
         return [proj_name for proj_name, _ in sorted_projects[:top_k]]
 
+    def get_exigences_from_rex_for_target_not_source(self, source_project_name: str, target_project_name: str) -> List[Node]:
+        """
+        Find REX for the source project.
+        Find exigencies for these REX.
+        Out of these exigencies, find those that are linked to the target project but not connected to the source project.
+
+        Args:
+            source_project_name (str): The name of the source project (e.g., "Project A").
+            target_project_name (str): The name of the target project (e.g., "Project B").
+
+        Returns:
+            List[Node]: A list of Exigence nodes.
+        """
+        source_proj_node = self.qry.find_node_by_exact_metadata("name", source_project_name, NodeType.PROJET)
+        target_proj_node = self.qry.find_node_by_exact_metadata("name", target_project_name, NodeType.PROJET)
+
+        if not source_proj_node or not target_proj_node:
+            return []
+
+        # Find REX nodes connected to the source project
+        source_rex_nodes = self.qry.get_neighbors(source_proj_node.id, NodeType.REX)
+
+        # Collect all unique exigencies connected to these REX nodes
+        exigences = set()
+        for rex in source_rex_nodes:
+            rex_exg_nodes = self.qry.get_neighbors(rex.id, NodeType.EXIGENCE)
+            for exg in rex_exg_nodes:
+                exigences.add(exg)
+
+        # Filter the exigencies
+        result = []
+        for exg in exigences:
+            exg_projects = self.qry.get_neighbors(exg.id, NodeType.PROJET)
+            project_ids = {p.id for p in exg_projects}
+
+            if target_proj_node.id in project_ids and source_proj_node.id not in project_ids:
+                result.append(exg)
+
+        return result
+
     def get_useful_rex(self, project_name: str, exigencies_texts: List[str], exact_match: bool = False) -> List[str]:
         """
         Given a project name and a list of exigencies text, extracts related REX (Return on Experience)

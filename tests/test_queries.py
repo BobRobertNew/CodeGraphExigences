@@ -98,6 +98,62 @@ class TestQueryHandler(unittest.TestCase):
         self.assertEqual(count, 1)
         self.assertEqual(nodes[0].id, "r1")
 
+    def test_get_exigences_from_rex_for_target_not_source(self):
+        projA = Node(id="pA", type=NodeType.PROJET, metadata={"name": "Project A"})
+        projB = Node(id="pB", type=NodeType.PROJET, metadata={"name": "Project B"})
+
+        # Exigence 1: linked to REX of A, linked to B, but NOT A -> SHOULD MATCH
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
+        rex1 = Node(id="r1", type=NodeType.REX, metadata={"description": "REX 1 for A"})
+
+        # Exigence 2: linked to REX of A, linked to B AND A -> SHOULD NOT MATCH (because it's linked to A)
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exg 2"})
+        rex2 = Node(id="r2", type=NodeType.REX, metadata={"description": "REX 2 for A"})
+
+        # Exigence 3: linked to REX of A, linked to neither A nor B -> SHOULD NOT MATCH (not linked to B)
+        exg3 = Node(id="e3", type=NodeType.EXIGENCE, metadata={"description": "Exg 3"})
+        rex3 = Node(id="r3", type=NodeType.REX, metadata={"description": "REX 3 for A"})
+
+        # Exigence 4: NOT linked to REX of A (but linked to B and not A) -> SHOULD NOT MATCH (not from REX of A)
+        exg4 = Node(id="e4", type=NodeType.EXIGENCE, metadata={"description": "Exg 4"})
+
+        self.repo.add_node(projA)
+        self.repo.add_node(projB)
+        self.repo.add_node(exg1)
+        self.repo.add_node(rex1)
+        self.repo.add_node(exg2)
+        self.repo.add_node(rex2)
+        self.repo.add_node(exg3)
+        self.repo.add_node(rex3)
+        self.repo.add_node(exg4)
+
+        # Link REX to Source Project A
+        self.repo.add_edge(Edge(source_id="r1", target_id="pA", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="r2", target_id="pA", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="r3", target_id="pA", type="LINKED_TO"))
+
+        # Link REX to Exigences
+        self.repo.add_edge(Edge(source_id="r1", target_id="e1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="r2", target_id="e2", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="r3", target_id="e3", type="LINKED_TO"))
+
+        # Link Exigences to Projects
+        # e1 to B only
+        self.repo.add_edge(Edge(source_id="e1", target_id="pB", type="LINKED_TO"))
+
+        # e2 to A and B
+        self.repo.add_edge(Edge(source_id="e2", target_id="pB", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e2", target_id="pA", type="LINKED_TO"))
+
+        # e3 to neither (no edges to projects)
+
+        # e4 to B only (but not connected to REX of A)
+        self.repo.add_edge(Edge(source_id="e4", target_id="pB", type="LINKED_TO"))
+
+        result = self.query_handler.get_exigences_from_rex_for_target_not_source("Project A", "Project B")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, "e1")
+
     def test_find_most_similar_exigencies(self):
         exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "System shall run fast"})
         exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "The system must be secure"})
