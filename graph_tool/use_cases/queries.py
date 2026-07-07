@@ -83,6 +83,46 @@ class QueryHandler:
         sorted_projects = sorted(project_scores.items(), key=lambda item: item[1], reverse=True)
         return [proj_name for proj_name, _ in sorted_projects[:top_k]]
 
+    def get_exigences_from_rex_for_target_not_source(self, source_project_name: str, target_project_name: str) -> List[Node]:
+        """
+        Find REX for the source project.
+        Find exigencies for these REX.
+        Out of these exigencies, find those that are linked to the target project but not connected to the source project.
+
+        Args:
+            source_project_name (str): The name of the source project (e.g., "Project A").
+            target_project_name (str): The name of the target project (e.g., "Project B").
+
+        Returns:
+            List[Node]: A list of Exigence nodes.
+        """
+        source_proj_node = self.qry.find_node_by_exact_metadata("name", source_project_name, NodeType.PROJET)
+        target_proj_node = self.qry.find_node_by_exact_metadata("name", target_project_name, NodeType.PROJET)
+
+        if not source_proj_node or not target_proj_node:
+            return []
+
+        # Find REX nodes connected to the source project
+        source_rex_nodes = self.qry.get_neighbors(source_proj_node.id, NodeType.REX)
+
+        # Collect all unique exigencies connected to these REX nodes
+        exigences = set()
+        for rex in source_rex_nodes:
+            rex_exg_nodes = self.qry.get_neighbors(rex.id, NodeType.EXIGENCE)
+            for exg in rex_exg_nodes:
+                exigences.add(exg)
+
+        # Filter the exigencies
+        result = []
+        for exg in exigences:
+            exg_projects = self.qry.get_neighbors(exg.id, NodeType.PROJET)
+            project_ids = {p.id for p in exg_projects}
+
+            if target_proj_node.id in project_ids and source_proj_node.id not in project_ids:
+                result.append(exg)
+
+        return result
+
     def get_useful_rex(self, project_name: str, exigencies_texts: List[str], exact_match: bool = False) -> List[str]:
         """
         Given a project name and a list of exigencies text, extracts related REX (Return on Experience)
@@ -522,6 +562,39 @@ class QueryHandler:
 
         connected_nodes_list = list(connected_nodes_set)
         return len(connected_nodes_list), connected_nodes_list
+
+    def get_preuves_connection_status_for_project(self, project_name: str) -> Tuple[List[Node], List[Node]]:
+        """
+        Retrieves two lists of Preuve nodes for a specific project:
+        1. Preuve nodes that are NOT connected to a Document node.
+        2. Preuve nodes that ARE connected to a Document node.
+
+        Args:
+            project_name (str): The name of the project to analyze.
+
+        Returns:
+            Tuple[List[Node], List[Node]]: A tuple containing two lists:
+                - List of Preuve nodes without a connected Document.
+                - List of Preuve nodes with a connected Document.
+        """
+        proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
+        if not proj_node:
+            return [], []
+
+        preuves_without_document = set()
+        preuves_with_document = set()
+
+        exigences = self.qry.get_neighbors(proj_node.id, NodeType.EXIGENCE)
+        for exg in exigences:
+            preuves = self.qry.get_neighbors(exg.id, NodeType.PREUVE)
+            for p in preuves:
+                documents = self.qry.get_neighbors(p.id, NodeType.DOCUMENT)
+                if documents:
+                    preuves_with_document.add(p)
+                else:
+                    preuves_without_document.add(p)
+
+        return list(preuves_without_document), list(preuves_with_document)
 
     def find_most_similar_exigencies(self, input_exigencies: List[str], threshold: int = 70) -> pd.DataFrame:
         """

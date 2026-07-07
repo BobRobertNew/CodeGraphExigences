@@ -5,7 +5,7 @@ from ..domain.entities import Node, Edge, NodeType
 from ..domain.ports import IGraphCommand, IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match
 from ..infrastructure.data_loader import load_and_clean_data, clean_dataframe
-from .extractors import IExtractionStep, LegacyExigenceExtractionStep
+from .extractors import IExtractionStep, LegacyExigenceExtractionStep, LinkPreuveStep
 
 class CommandHandler:
     """
@@ -66,6 +66,33 @@ class CommandHandler:
 
         for step in steps:
             step.execute(df, proj_node, self.cmd, self.qry)
+
+    def add_preuves(
+        self,
+        data_source: Union[str, pd.DataFrame],
+        loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
+        steps: List[IExtractionStep] = None
+    ):
+        """
+        Adds PREUVE nodes to the graph by extracting them from the data source.
+        Models after `add_project_exigences` using extractors.
+
+        Args:
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+            loader (Callable): Function to load the data_source into a DataFrame.
+            steps (List[IExtractionStep]): List of extraction steps to apply. If None, uses LinkPreuveStep.
+        """
+        df = loader(data_source)
+        if loader != load_and_clean_data:
+            df = clean_dataframe(df)
+
+        # Run extraction steps
+        if steps is None:
+            steps = [LinkPreuveStep()]
+
+        # Pass None for proj_node as add_preuves does not take a project name
+        for step in steps:
+            step.execute(df, None, self.cmd, self.qry)
 
     def add_rex(
         self,
@@ -249,3 +276,53 @@ class CommandHandler:
                 self.cmd.add_node(doc_node)
 
             self.cmd.add_edge(Edge(contract_node.id, doc_node.id))
+
+    def add_documents(
+        self,
+        project_name: str,
+        df: pd.DataFrame,
+        doc_col: str = "Document",
+        preuve_col: str = "Preuve"
+    ):
+        """
+        Adds Document nodes to a project and links them to their corresponding Preuve de conformité nodes.
+
+        Args:
+            project_name (str): The name of the project.
+            df (pd.DataFrame): DataFrame containing document and preuve pairs.
+            doc_col (str): The column name for documents in the DataFrame.
+            preuve_col (str): The column name for preuves in the DataFrame.
+        """
+        # Ensure Project Node exists
+        proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
+        if not proj_node:
+            proj_id = generate_short_id("PRJ", project_name)
+            proj_node = Node(id=proj_id, type=NodeType.PROJET, metadata={"name": project_name})
+            self.cmd.add_node(proj_node)
+
+        for _, row in df.iterrows():
+            doc_name = str(row.get(doc_col, "")).strip()
+            preuve_text = str(row.get(preuve_col, "")).strip()
+
+            if not doc_name or not preuve_text:
+                continue
+
+            # Handle Document Node
+            doc_id = generate_short_id("DOC", doc_name)
+            doc_node = self.qry.get_node(doc_id)
+            if not doc_node:
+                doc_node = Node(id=doc_id, type=NodeType.DOCUMENT, metadata={"name": doc_name})
+                self.cmd.add_node(doc_node)
+
+            # Link Project -> Document
+            self.cmd.add_edge(Edge(proj_node.id, doc_node.id))
+
+            # Handle Preuve Node
+            preuve_id = generate_short_id("PRV", preuve_text)
+            preuve_node = self.qry.get_node(preuve_id)
+            if not preuve_node:
+                preuve_node = Node(id=preuve_id, type=NodeType.PREUVE, metadata={"description": preuve_text})
+                self.cmd.add_node(preuve_node)
+
+            # Link Document -> Preuve
+            self.cmd.add_edge(Edge(doc_node.id, preuve_node.id))

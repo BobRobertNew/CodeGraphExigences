@@ -5,8 +5,7 @@ from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepositor
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
-from graph_tool.use_cases.renderers import PyVisRenderer
-from graph_tool.use_cases.renderers.datashader_renderer import DatashaderRenderer
+from graph_tool.use_cases.renderers import PyVisRenderer #, DatashaderRenderer
 
 from graph_tool.use_cases.storage import StorageHandler
 from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
@@ -52,7 +51,7 @@ def main():
 
     # Load REX for Project A
     print("Loading REX for Project A...")
-    commands.add_rex("Project A", file_rex_A)
+    commands.add_rex("Project A", file_rex_A,exact_match_only=True)
 
     print("\nData loaded successfully!")
 
@@ -63,6 +62,12 @@ def main():
     print("\nQuestion: How many nodes the graph has?")
     total_nodes = queries.get_total_node_count()
     print(f"Answer: The graph has {total_nodes} nodes.")
+
+    print("\nQuestion: What are the exigences linked to REX of Project A, that are in Project B but not Project A?")
+    exgs_from_rex_b_not_a = queries.get_exigences_from_rex_for_target_not_source("Project A", "Project B")
+    print(f"Answer: Found {len(exgs_from_rex_b_not_a)} exigences.")
+    for exg in exgs_from_rex_b_not_a:
+        print(f"  - Exigence ID: {exg.id}, Text: {exg.metadata.get('description', '')}")
 
     print("\nQuestion: How many exigences has the project A?")
     project_a_exg_count = queries.get_exigences_count_for_project("Project A")
@@ -92,7 +97,7 @@ def main():
     # Question 1: Find similar projects to Project A based on its exigencies
     # Let's extract the exigencies text from Project A's dataframe for the query
     df_a = pd.read_excel(file_project_A)
-    exigencies_a = df_a["Exigence" if "Exigence" in df_a.columns else "Exigences"].dropna().tolist()
+    exigencies_a = df_a["Exigence"].dropna().tolist() if "Exigence" in df_a.columns else df_a.get("Exigences", pd.Series()).dropna().tolist()
 
     print(f"Question: What are the most similar projects to Project A?")
     similar_projects = queries.find_most_similar_projects("Project A", exigencies_a, top_k=2,exact_match=True)
@@ -100,13 +105,13 @@ def main():
 
     # Question 2: Get useful REX for Project B based on its exigencies
     df_b = pd.read_excel(file_project_B)
-    exigencies_b = df_b["Exigence" if "Exigence" in df_b.columns else "Exigences"].dropna().tolist()
+    exigencies_b = df_b["Exigence"].dropna().tolist() if "Exigence" in df_b.columns else df_b.get("Exigences", pd.Series()).dropna().tolist()
 
     print(f"\nQuestion: Are there any useful REX for Project B from similar projects?")
     # This function uses the find_most_similar_projects internally to find REX
     useful_rex_ids = queries.get_useful_rex("Project B", exigencies_b,exact_match=True)
     print(f"Answer: Found {len(useful_rex_ids)} relevant REX.")
-    for rex_id in useful_rex_ids:
+    for rex_id in useful_rex_ids[:3]:
         # Retrieve the node to display its details
         node = repo.get_node(rex_id)
         if node:
@@ -127,7 +132,7 @@ def main():
 
     # Question 4: Find similar exigencies for Project C
     df_c = pd.read_excel(file_project_B)
-    exigencies_c = df_c["Exigence" if "Exigence" in df_c.columns else "Exigences"].dropna().tolist()
+    exigencies_c = df_c["Exigence"].dropna().tolist() if "Exigence" in df_c.columns else df_c.get("Exigences", pd.Series()).dropna().tolist()
     print(f"\nQuestion: What are the most similar exigencies in the graph to those in Project C?")
     similar_exigencies_df = queries.find_most_similar_exigencies(exigencies_c)
 
@@ -165,10 +170,12 @@ def main():
     enhancements.visualize_graph(output_html_pyvis, renderer=PyVisRenderer())
     print(f"     PyVis visualization saved to {output_html_pyvis}")
 
+    """
     output_html_ds = "graph_visualization_datashader.html"
     print(f"  -> Rendering with Datashader (force-directed layout)...")
     enhancements.visualize_graph(output_html_ds, renderer=DatashaderRenderer(), layout='spring')
     print(f"     Datashader visualization saved to {output_html_ds}")
+    """
 
     print("\n--- Saving the Graph ---")
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
