@@ -105,7 +105,7 @@ def main():
     # This function uses the find_most_similar_projects internally to find REX
     useful_rex_ids = queries.get_useful_rex("Project B", exigencies_b,exact_match=True)
     print(f"Answer: Found {len(useful_rex_ids)} relevant REX.")
-    for rex_id in useful_rex_ids:
+    for rex_id in useful_rex_ids[:3]:
         # Retrieve the node to display its details
         node = repo.get_node(rex_id)
         if node:
