@@ -132,3 +132,50 @@ def load_and_clean_data(source: Union[str, pd.DataFrame], **kwargs) -> pd.DataFr
         df = _apply_2row_header_logic(raw_df)
 
     return clean_dataframe(df)
+
+def extract_document_preuve_pairs(
+    source: Union[str, pd.DataFrame],
+    doc_col: str = "Document",
+    preuve_col: str = "Preuve",
+    **kwargs
+) -> pd.DataFrame:
+    """
+    Extracts unique pairs of document names and preuve texts from a data source.
+    Handles both simple format (columns named 'Documents' and 'Preuves') and
+    2-row header formats (columns like '[Métier]_Reference GED PC' and '[Métier]_Preuve de conformité').
+
+    Args:
+        source (Union[str, pd.DataFrame]): The data source.
+        doc_col (str, optional): The output column name for documents. Defaults to "Document".
+        preuve_col (str, optional): The output column name for preuves. Defaults to "Preuve".
+        **kwargs: Additional arguments for load_data.
+
+    Returns:
+        pd.DataFrame: A dataframe containing unique document and preuve pairs.
+    """
+    df = load_and_clean_data(source, **kwargs)
+    pairs = set()
+
+    # Check for simple format
+    if "Documents" in df.columns and "Preuves" in df.columns:
+        for _, row in df.iterrows():
+            doc = str(row["Documents"]).strip()
+            prv = str(row["Preuves"]).strip()
+            if doc and prv:
+                pairs.add((doc, prv))
+    else:
+        # Check for 2-row header or combined columns format
+        for col in df.columns:
+            col_str = str(col)
+            if col_str.endswith("_Reference GED PC"):
+                prefix = col_str[:-len("_Reference GED PC")]
+                preuve_target_col = f"{prefix}_Preuve de conformité"
+
+                if preuve_target_col in df.columns:
+                    for _, row in df.iterrows():
+                        doc = str(row[col]).strip()
+                        prv = str(row[preuve_target_col]).strip()
+                        if doc and prv:
+                            pairs.add((doc, prv))
+
+    return pd.DataFrame(list(pairs), columns=[doc_col, preuve_col])
