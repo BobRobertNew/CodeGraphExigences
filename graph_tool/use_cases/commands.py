@@ -249,3 +249,53 @@ class CommandHandler:
                 self.cmd.add_node(doc_node)
 
             self.cmd.add_edge(Edge(contract_node.id, doc_node.id))
+
+    def add_documents(
+        self,
+        project_name: str,
+        df: pd.DataFrame,
+        doc_col: str = "Document",
+        preuve_col: str = "Preuve"
+    ):
+        """
+        Adds Document nodes to a project and links them to their corresponding Preuve de conformité nodes.
+
+        Args:
+            project_name (str): The name of the project.
+            df (pd.DataFrame): DataFrame containing document and preuve pairs.
+            doc_col (str): The column name for documents in the DataFrame.
+            preuve_col (str): The column name for preuves in the DataFrame.
+        """
+        # Ensure Project Node exists
+        proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
+        if not proj_node:
+            proj_id = generate_short_id("PRJ", project_name)
+            proj_node = Node(id=proj_id, type=NodeType.PROJET, metadata={"name": project_name})
+            self.cmd.add_node(proj_node)
+
+        for _, row in df.iterrows():
+            doc_name = str(row.get(doc_col, "")).strip()
+            preuve_text = str(row.get(preuve_col, "")).strip()
+
+            if not doc_name or not preuve_text:
+                continue
+
+            # Handle Document Node
+            doc_id = generate_short_id("DOC", doc_name)
+            doc_node = self.qry.get_node(doc_id)
+            if not doc_node:
+                doc_node = Node(id=doc_id, type=NodeType.DOCUMENT, metadata={"name": doc_name})
+                self.cmd.add_node(doc_node)
+
+            # Link Project -> Document
+            self.cmd.add_edge(Edge(proj_node.id, doc_node.id))
+
+            # Handle Preuve Node
+            preuve_id = generate_short_id("PRV", preuve_text)
+            preuve_node = self.qry.get_node(preuve_id)
+            if not preuve_node:
+                preuve_node = Node(id=preuve_id, type=NodeType.PREUVE, metadata={"description": preuve_text})
+                self.cmd.add_node(preuve_node)
+
+            # Link Document -> Preuve
+            self.cmd.add_edge(Edge(doc_node.id, preuve_node.id))
