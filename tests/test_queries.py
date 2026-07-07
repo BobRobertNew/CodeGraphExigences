@@ -98,6 +98,58 @@ class TestQueryHandler(unittest.TestCase):
         self.assertEqual(count, 1)
         self.assertEqual(nodes[0].id, "r1")
 
+    def test_get_preuves_connection_status_for_project(self):
+        # Create a graph: Project -> Exigence -> Preuve -> Document
+        proj = Node(id="p1", type=NodeType.PROJET, metadata={"name": "Project A"})
+
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exg 1"})
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exg 2"})
+
+        # Preuves for exg1
+        preuve1 = Node(id="pr1", type=NodeType.PREUVE, metadata={"description": "Preuve 1"})
+        preuve2 = Node(id="pr2", type=NodeType.PREUVE, metadata={"description": "Preuve 2"})
+
+        # Preuves for exg2
+        preuve3 = Node(id="pr3", type=NodeType.PREUVE, metadata={"description": "Preuve 3"})
+
+        # Document (only connected to pr2 and pr3)
+        doc1 = Node(id="d1", type=NodeType.DOCUMENT, metadata={"name": "Doc 1"})
+        doc2 = Node(id="d2", type=NodeType.DOCUMENT, metadata={"name": "Doc 2"})
+
+        self.repo.add_node(proj)
+        self.repo.add_node(exg1)
+        self.repo.add_node(exg2)
+        self.repo.add_node(preuve1)
+        self.repo.add_node(preuve2)
+        self.repo.add_node(preuve3)
+        self.repo.add_node(doc1)
+        self.repo.add_node(doc2)
+
+        self.repo.add_edge(Edge(source_id="p1", target_id="e1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="p1", target_id="e2", type="LINKED_TO"))
+
+        self.repo.add_edge(Edge(source_id="e1", target_id="pr1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e1", target_id="pr2", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="e2", target_id="pr3", type="LINKED_TO"))
+
+        self.repo.add_edge(Edge(source_id="pr2", target_id="d1", type="LINKED_TO"))
+        self.repo.add_edge(Edge(source_id="pr3", target_id="d2", type="LINKED_TO"))
+
+        preuves_no_doc, preuves_with_doc = self.query_handler.get_preuves_connection_status_for_project("Project A")
+
+        # pr1 has no doc. pr2 and pr3 have docs.
+        self.assertEqual(len(preuves_no_doc), 1)
+        self.assertEqual(preuves_no_doc[0].id, "pr1")
+
+        self.assertEqual(len(preuves_with_doc), 2)
+        with_doc_ids = {p.id for p in preuves_with_doc}
+        self.assertEqual(with_doc_ids, {"pr2", "pr3"})
+
+        # Test non-existent project
+        no_doc, with_doc = self.query_handler.get_preuves_connection_status_for_project("NonExistent Project")
+        self.assertEqual(no_doc, [])
+        self.assertEqual(with_doc, [])
+
     def test_find_most_similar_exigencies(self):
         exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "System shall run fast"})
         exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "The system must be secure"})
