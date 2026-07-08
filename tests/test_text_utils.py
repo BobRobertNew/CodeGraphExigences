@@ -240,5 +240,64 @@ class TestTextUtils(unittest.TestCase):
         self.assertEqual(find_best_match(almost_query, choices, threshold=99), "a" * 1000)
 
 
+
+    def test_find_best_match_string_zero(self):
+        # "0" evaluates to True, unlike integer 0
+        choices = ["0", "1", "2"]
+        self.assertEqual(find_best_match("0", choices), "0")
+
+    def test_find_best_match_with_score_string_zero(self):
+        choices = ["0", "1", "2"]
+        match, score = find_best_match_with_score("0", choices)
+        self.assertEqual(match, "0")
+        self.assertEqual(score, 100)
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 70)
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("appl", choices, threshold=70)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 70)
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 69.9)
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("appl", choices, threshold=70)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_with_score_type_error(self, mock_extractOne):
+        mock_extractOne.side_effect = TypeError("Mocked TypeError")
+        with self.assertRaises(TypeError):
+            find_best_match_with_score("123", [123])
+
+    def test_find_best_match_choices_as_set(self):
+        choices = {"apple", "banana", "cherry"}
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+    def test_find_best_match_with_score_choices_as_set(self):
+        choices = {"apple", "banana", "cherry"}
+        match, score = find_best_match_with_score("apple", choices)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 100)
+
+
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_exception_propagation(self, mock_extractOne):
+        mock_extractOne.side_effect = ValueError("Something went wrong")
+        with self.assertRaises(ValueError):
+            find_best_match("apple", ["apple"])
+
+    def test_find_best_match_with_score_out_of_bounds_threshold(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("apple", choices, threshold=105)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+
 if __name__ == "__main__":
     unittest.main()
