@@ -4,3 +4,7 @@ graph_visualization.html
 doc/build/
 .coverage
 .pytest_cache/
+*.xlsx
+*.graphml
+*.html
+*.png

@@ -19,7 +19,7 @@ This tool strictly adheres to **SOLID** principles, specifically:
 Install the necessary dependencies:
 
 ```bash
-pip install networkx pandas thefuzz pyvis openpyxl
+pip install networkx pandas thefuzz pyvis openpyxl upsetplot matplotlib
 ```
 
 ## Usage

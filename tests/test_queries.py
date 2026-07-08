@@ -234,6 +234,64 @@ class TestQueryHandler(unittest.TestCase):
         self.assertEqual(df.iloc[1]["MyValues"], "Val3")
 
         os.remove(filepath)
+    def test_complete_pivot_excel_with_graph_info(self):
+        exg_text = "exigence 1"
+        exg = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": exg_text})
+        phase_etude = Node(id="ph1", type=NodeType.PHASE_PROJET, metadata={"name": "Etude"})
+        metier_gc = Node(id="m1", type=NodeType.METIER, metadata={"name": "Génie Civil"})
+        preuve = Node(id="prv1", type=NodeType.PREUVE, metadata={"description": "My Preuve GC"})
+        doc = Node(id="d1", type=NodeType.DOCUMENT, metadata={"name": "Doc123"})
+
+        self.repo.add_node(exg)
+        self.repo.add_node(phase_etude)
+        self.repo.add_node(metier_gc)
+        self.repo.add_node(preuve)
+        self.repo.add_node(doc)
+
+        self.repo.add_edge(Edge(exg.id, phase_etude.id))
+        self.repo.add_edge(Edge(exg.id, preuve.id))
+        self.repo.add_edge(Edge(preuve.id, metier_gc.id))
+        self.repo.add_edge(Edge(preuve.id, doc.id))
+
+        df = pd.DataFrame({
+            "Exigences": [exg_text],
+            "Phase Etude": [""],
+            "Conception": [""],
+            "Génie Civil_Concerné": [""],
+            "Génie Civil_Preuve de conformité": [""],
+            "Génie Civil_Reference GED PC": [""]
+        })
+
+        df_out = self.query_handler.complete_pivot_excel_with_graph_info(df)
+
+        self.assertEqual(df_out.at[0, "Phase Etude"], "X")
+        self.assertEqual(df_out.at[0, "Conception"], "")
+        self.assertEqual(df_out.at[0, "Génie Civil_Concerné"], "X")
+        self.assertEqual(df_out.at[0, "Génie Civil_Preuve de conformité"], "My Preuve GC")
+        self.assertEqual(df_out.at[0, "Génie Civil_Reference GED PC"], "Doc123")
+
+    def test_transform_to_2row_header(self):
+        df = pd.DataFrame({
+            "Data_Source File": ["val1"],
+            "Data": ["val2"],
+            "Article": ["val3"],
+            "Génie Civil_Concerné": ["val4"],
+            "Génie Civil_Preuve de conformité": ["val5"],
+            "Unknown Column": ["val6"]
+        })
+
+        df_out = self.query_handler.transform_to_2row_header(df)
+
+        expected_cols = pd.MultiIndex.from_tuples([
+            ("Data", "Source File"),
+            ("Data", "Line"),
+            ("Article", "Unnamed"),
+            ("Génie Civil", "Concerné"),
+            ("Génie Civil", "Preuve de conformité"),
+            ("Unknown Column", "Unnamed")
+        ])
+
+        pd.testing.assert_index_equal(df_out.columns, expected_cols)
 
 if __name__ == '__main__':
     unittest.main()
