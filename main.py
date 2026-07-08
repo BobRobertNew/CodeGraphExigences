@@ -188,7 +188,15 @@ def main():
     if res_venn:
         print(f"     Venn diagram saved to {res_venn}")
 
+    print("\n--- Generating UpSet Plot ---")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    upset_filename = f"upset_plot_projets_exigences_{timestamp}.png"
+    print(f"Generating UpSet plot for Projects and their Exigences...")
+    enhancements.generate_upset_plot(NodeType.PROJET, NodeType.EXIGENCE, output_file=upset_filename)
+    print(f"UpSet plot saved successfully to {upset_filename}")
+
     print("\n--- Saving the Graph ---")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     save_filename = f"graph_{timestamp}.graphml"
     storage.save_graph(save_filename)

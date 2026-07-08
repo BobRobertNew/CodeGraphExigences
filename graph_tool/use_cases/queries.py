@@ -123,6 +123,26 @@ class QueryHandler:
 
         return result
 
+    def export_dict_to_excel(self, data: Dict[str, List[str]], filepath: str, key_col_name: str = "Key", val_col_name: str = "Values") -> None:
+        """
+        Exports a dictionary mapping strings to lists of strings into a 2-column Excel file.
+
+        Args:
+            data (Dict[str, List[str]]): The dictionary to export.
+            filepath (str): The path where the Excel file should be saved.
+            key_col_name (str, optional): The header for the first column. Defaults to "Key".
+            val_col_name (str, optional): The header for the second column. Defaults to "Values".
+        """
+        rows = []
+        for key, values in data.items():
+            rows.append({
+                key_col_name: key,
+                val_col_name: ", ".join(values)
+            })
+
+        df = pd.DataFrame(rows)
+        df.to_excel(filepath, index=False)
+
     def get_useful_rex(self, project_name: str, exigencies_texts: List[str], exact_match: bool = False) -> List[str]:
         """
         Given a project name and a list of exigencies text, extracts related REX (Return on Experience)
@@ -208,6 +228,111 @@ class QueryHandler:
                         results.append({"Exigences": exigence_text, "Phase": phase, "Preuve": preuve})
 
         return pd.DataFrame(results)
+
+    def complete_pivot_excel_with_graph_info(self, data_source: Union[str, pd.DataFrame]) -> pd.DataFrame:
+        """
+        Takes a flattened (1-row header) pivot DataFrame or Excel file, searches the graph,
+        and completes the "Phase" and "Métier" columns for each requirement (Exigence).
+
+        Args:
+            data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
+
+        Returns:
+            pd.DataFrame: A new DataFrame with the graph information filled in.
+        """
+        df = load_and_clean_data(data_source)
+        df_clean = df.copy()
+
+        for idx, row in df_clean.iterrows():
+            exigence_text = str(row.get("Exigences", "")).strip()
+            if not exigence_text:
+                continue
+
+            nodes = self._get_exigence_nodes_from_texts([exigence_text], exact_match=True)
+            if not nodes:
+                continue
+
+            exg_node = nodes[0]
+            neighbors = self.qry.get_neighbors(exg_node.id)
+
+            phases = [n for n in neighbors if n.type == NodeType.PHASE_PROJET]
+            preuves = [n for n in neighbors if n.type == NodeType.PREUVE]
+
+            # Complete Phase columns
+            for p in phases:
+                p_name = p.metadata.get("name")
+                col_name = p_name if p_name in ["Conception", "Exploitation", "Commun"] else f"Phase {p_name}"
+                if col_name in df_clean.columns:
+                    df_clean.at[idx, col_name] = "X"
+
+            # Complete Preuves, Métiers, and Documents
+            for prv in preuves:
+                prv_neighbors = self.qry.get_neighbors(prv.id)
+                metiers = [n for n in prv_neighbors if n.type == NodeType.METIER]
+                docs = [n for n in prv_neighbors if n.type == NodeType.DOCUMENT]
+
+                for m in metiers:
+                    m_name = m.metadata.get("name")
+                    m_concerne = f"{m_name}_Concerné"
+                    m_prv = f"{m_name}_Preuve de conformité"
+                    m_ged = f"{m_name}_Reference GED PC"
+
+                    if m_concerne in df_clean.columns:
+                        df_clean.at[idx, m_concerne] = "X"
+
+                    if m_prv in df_clean.columns:
+                        # Append if already exists, or just set it
+                        current_prv = str(df_clean.at[idx, m_prv]).strip()
+                        new_prv = prv.metadata.get("description", "")
+                        if new_prv:
+                            if current_prv and current_prv != "nan" and current_prv != new_prv:
+                                df_clean.at[idx, m_prv] = f"{current_prv} ; {new_prv}"
+                            elif not current_prv or current_prv == "nan":
+                                df_clean.at[idx, m_prv] = new_prv
+
+                    if m_ged in df_clean.columns:
+                        doc_names = [d.metadata.get("name", "") for d in docs]
+                        new_ged = " ; ".join(doc_names)
+                        if new_ged:
+                            current_ged = str(df_clean.at[idx, m_ged]).strip()
+                            if current_ged and current_ged != "nan" and current_ged != new_ged:
+                                df_clean.at[idx, m_ged] = f"{current_ged} ; {new_ged}"
+                            elif not current_ged or current_ged == "nan":
+                                df_clean.at[idx, m_ged] = new_ged
+
+        return df_clean
+
+
+    def transform_to_2row_header(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Transforms a flattened 1-row header pivot DataFrame back into its original
+        2-row header MultiIndex structure.
+
+        Args:
+            df (pd.DataFrame): The flattened DataFrame.
+
+        Returns:
+            pd.DataFrame: A new DataFrame with a MultiIndex columns structure.
+        """
+        multi_cols = []
+        for col in df.columns:
+            # Check for known prefixes based on the pivot format
+            if col.startswith("Data_"):
+                multi_cols.append(("Data", col.replace("Data_", "")))
+            elif col == "Data":
+                multi_cols.append(("Data", "Line"))
+            elif col in ["Article", "Article_texte", "Sous_Article", "Exigences", "Etat de Conformité", "Commentaire lié à la conformité", "textes à enjeux", "Commentaire général", "À Enjeux", "Conception", "Exploitation", "Commun", "Phase Etude", "Phase Contrat", "Phase Réalisation"]:
+                # To match exact output, some originally un-named levels become part of the tuple, but usually they are flat headers
+                multi_cols.append((col, "Unnamed"))
+            elif "_" in col and (col.endswith("_Concerné") or col.endswith("_Preuve de conformité") or col.endswith("_Reference GED PC") or col.endswith("_Numéro de la preuve de conformité") or col.endswith("_Suivi de la preuve de conformité")):
+                parts = col.rsplit("_", 1)
+                multi_cols.append((parts[0], parts[1]))
+            else:
+                multi_cols.append((col, "Unnamed"))
+
+        df_multi = df.copy()
+        df_multi.columns = pd.MultiIndex.from_tuples(multi_cols)
+        return df_multi
 
     def complete_excel_with_graph_info(self, data_source: Union[str, pd.DataFrame]) -> pd.DataFrame:
         """
@@ -624,3 +749,43 @@ class QueryHandler:
             })
 
         return pd.DataFrame(results)
+
+    def get_exigencies_with_multiple_sous_articles(self) -> Dict[str, List[str]]:
+        """
+        Gets the list of exigencies that are connected to several "Sous article" nodes.
+        The result gives for each such exigence the list of "Sous-article" concerned.
+
+        Returns:
+            Dict[str, List[str]]: A dictionary mapping Exigence descriptions to lists of "Sous Article" names.
+        """
+        result = {}
+        all_exigences = self.qry.get_nodes_by_type(NodeType.EXIGENCE)
+
+        for exg in all_exigences:
+            neighbors = self.qry.get_neighbors(exg.id, filter_type=NodeType.SOUS_ARTICLE)
+            if len(neighbors) > 1:
+                desc = exg.metadata.get("description", "")
+                if desc:
+                    result[desc] = [n.metadata.get("name", "") for n in neighbors]
+
+        return result
+
+    def get_sous_articles_with_multiple_articles(self) -> Dict[str, List[str]]:
+        """
+        Gets the list of "Sous-article" nodes connected to several "Article" nodes.
+        Provides for each such "Sous-article" the list of Articles connected.
+
+        Returns:
+            Dict[str, List[str]]: A dictionary mapping "Sous Article" names to lists of "Article" names.
+        """
+        result = {}
+        all_sous_articles = self.qry.get_nodes_by_type(NodeType.SOUS_ARTICLE)
+
+        for sart in all_sous_articles:
+            neighbors = self.qry.get_neighbors(sart.id, filter_type=NodeType.ARTICLE)
+            if len(neighbors) > 1:
+                name = sart.metadata.get("name", "")
+                if name:
+                    result[name] = [n.metadata.get("name", "") for n in neighbors]
+
+        return result
