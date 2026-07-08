@@ -123,6 +123,26 @@ class QueryHandler:
 
         return result
 
+    def export_dict_to_excel(self, data: Dict[str, List[str]], filepath: str, key_col_name: str = "Key", val_col_name: str = "Values") -> None:
+        """
+        Exports a dictionary mapping strings to lists of strings into a 2-column Excel file.
+
+        Args:
+            data (Dict[str, List[str]]): The dictionary to export.
+            filepath (str): The path where the Excel file should be saved.
+            key_col_name (str, optional): The header for the first column. Defaults to "Key".
+            val_col_name (str, optional): The header for the second column. Defaults to "Values".
+        """
+        rows = []
+        for key, values in data.items():
+            rows.append({
+                key_col_name: key,
+                val_col_name: ", ".join(values)
+            })
+
+        df = pd.DataFrame(rows)
+        df.to_excel(filepath, index=False)
+
     def get_useful_rex(self, project_name: str, exigencies_texts: List[str], exact_match: bool = False) -> List[str]:
         """
         Given a project name and a list of exigencies text, extracts related REX (Return on Experience)
@@ -729,3 +749,43 @@ class QueryHandler:
             })
 
         return pd.DataFrame(results)
+
+    def get_exigencies_with_multiple_sous_articles(self) -> Dict[str, List[str]]:
+        """
+        Gets the list of exigencies that are connected to several "Sous article" nodes.
+        The result gives for each such exigence the list of "Sous-article" concerned.
+
+        Returns:
+            Dict[str, List[str]]: A dictionary mapping Exigence descriptions to lists of "Sous Article" names.
+        """
+        result = {}
+        all_exigences = self.qry.get_nodes_by_type(NodeType.EXIGENCE)
+
+        for exg in all_exigences:
+            neighbors = self.qry.get_neighbors(exg.id, filter_type=NodeType.SOUS_ARTICLE)
+            if len(neighbors) > 1:
+                desc = exg.metadata.get("description", "")
+                if desc:
+                    result[desc] = [n.metadata.get("name", "") for n in neighbors]
+
+        return result
+
+    def get_sous_articles_with_multiple_articles(self) -> Dict[str, List[str]]:
+        """
+        Gets the list of "Sous-article" nodes connected to several "Article" nodes.
+        Provides for each such "Sous-article" the list of Articles connected.
+
+        Returns:
+            Dict[str, List[str]]: A dictionary mapping "Sous Article" names to lists of "Article" names.
+        """
+        result = {}
+        all_sous_articles = self.qry.get_nodes_by_type(NodeType.SOUS_ARTICLE)
+
+        for sart in all_sous_articles:
+            neighbors = self.qry.get_neighbors(sart.id, filter_type=NodeType.ARTICLE)
+            if len(neighbors) > 1:
+                name = sart.metadata.get("name", "")
+                if name:
+                    result[name] = [n.metadata.get("name", "") for n in neighbors]
+
+        return result
