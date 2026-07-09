@@ -15,6 +15,37 @@ from ..domain.entities import NodeType
 from ..domain.ports import IGraphQuery
 from .renderers import GraphRenderer, PyVisRenderer
 
+
+import inspect
+import textwrap
+import upsetplot.plotting
+
+def _patch_upsetplot_for_pandas3():
+    """
+    Patches upsetplot to avoid ChainedAssignmentError in Pandas 3.0 due to strict Copy-on-Write.
+    """
+    if getattr(upsetplot.plotting.UpSet.plot_matrix, "_is_patched", False):
+        return
+
+    try:
+        source = inspect.getsource(upsetplot.plotting.UpSet.plot_matrix)
+        source = textwrap.dedent(source)
+        source = source.replace('styles["linewidth"].fillna(1, inplace=True)', 'styles["linewidth"] = styles["linewidth"].fillna(1)')
+        source = source.replace('styles["facecolor"].fillna(self._facecolor, inplace=True)', 'styles["facecolor"] = styles["facecolor"].fillna(self._facecolor)')
+        source = source.replace('styles["edgecolor"].fillna(styles["facecolor"], inplace=True)', 'styles["edgecolor"] = styles["edgecolor"].fillna(styles["facecolor"])')
+        source = source.replace('styles["linestyle"].fillna("solid", inplace=True)', 'styles["linestyle"] = styles["linestyle"].fillna("solid")')
+
+        exec_locals = {}
+        exec_globals = upsetplot.plotting.__dict__.copy()
+        exec(source, exec_globals, exec_locals)
+        patched_func = exec_locals['plot_matrix']
+        patched_func._is_patched = True
+        upsetplot.plotting.UpSet.plot_matrix = patched_func
+    except Exception:
+        pass
+
+_patch_upsetplot_for_pandas3()
+
 class GraphEnhancements:
     """
     Provides additional features on top of the graph, such as visualization and integrity checking.
