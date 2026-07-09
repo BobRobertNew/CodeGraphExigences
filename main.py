@@ -131,7 +131,7 @@ def main():
         print(f"  Preuve: {first_row.get('Preuve de conformité (Graph)', '')}")
 
     # Question 4: Find similar exigencies for Project C
-    df_c = pd.read_excel(file_project_B)
+    df_c = pd.read_excel(file_project_C)
     exigencies_c = df_c["Exigence"].dropna().tolist() if "Exigence" in df_c.columns else df_c.get("Exigences", pd.Series()).dropna().tolist()
     print(f"\nQuestion: What are the most similar exigencies in the graph to those in Project C?")
     similar_exigencies_df = queries.find_most_similar_exigencies(exigencies_c)
