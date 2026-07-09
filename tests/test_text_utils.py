@@ -239,6 +239,31 @@ class TestTextUtils(unittest.TestCase):
         almost_query = "a" * 999 + "b"
         self.assertEqual(find_best_match(almost_query, choices, threshold=99), "a" * 1000)
 
+    def test_find_best_match_transposition(self):
+        # rapidfuzz handles small typos like transposition
+        choices = ["receive", "deceive", "believe"]
+        self.assertEqual(find_best_match("recieve", choices, threshold=80), "receive")
+
+    def test_find_best_match_substring(self):
+        # Substring/prefix should match the larger string with a high score
+        choices = ["authentication", "authorization", "administration"]
+        self.assertEqual(find_best_match("auth", choices, threshold=90), "authentication")
+
+    def test_find_best_match_punctuation_mixed(self):
+        # Punctuation differences should be handled
+        choices = ["id-123", "id_124", "id.125"]
+        self.assertEqual(find_best_match("id_123", choices, threshold=80), "id-123")
+
+    def test_find_best_match_single_character(self):
+        # Short strings or single characters matching exactly or closely
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match("a", choices, threshold=90), "apple")
+
+    def test_find_best_match_numeric_strings(self):
+        # Strings that contain numbers
+        choices = ["12346", "99999", "11111"]
+        self.assertEqual(find_best_match("12345", choices, threshold=80), "12346")
+
 
 
     def test_find_best_match_string_zero(self):
