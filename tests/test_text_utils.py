@@ -57,6 +57,17 @@ class TestTextUtils(unittest.TestCase):
     def test_find_best_match_none_choices(self):
         self.assertIsNone(find_best_match("apple", None))
 
+    def test_find_best_match_both_none(self):
+        self.assertIsNone(find_best_match(None, None))
+
+    def test_find_best_match_both_empty(self):
+        self.assertIsNone(find_best_match("", []))
+
+    def test_find_best_match_large_choices(self):
+        # Test performance and behavior with a large list of choices
+        choices = [f"item_{i}" for i in range(10000)] + ["target_match"]
+        self.assertEqual(find_best_match("target_match", choices), "target_match")
+
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_result_none(self, mock_extractOne):
         # Triggering a case where process.extractOne returns None
