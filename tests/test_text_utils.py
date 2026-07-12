@@ -324,5 +324,63 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_default_threshold_exact(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 70)
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("appl", choices), "apple")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_default_threshold_below(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 69.9)
+        choices = ["apple", "banana"]
+        self.assertIsNone(find_best_match("appl", choices))
+
+    def test_find_best_match_falsy_queries(self):
+        choices = ["apple", "banana"]
+        self.assertIsNone(find_best_match(0, choices))
+        self.assertIsNone(find_best_match(False, choices))
+        self.assertIsNone(find_best_match([], choices))
+        self.assertIsNone(find_best_match({}, choices))
+
+    def test_find_best_match_falsy_choices(self):
+        self.assertIsNone(find_best_match("apple", ()))
+        self.assertIsNone(find_best_match("apple", set()))
+        self.assertIsNone(find_best_match("apple", {}))
+
+    def test_find_best_match_with_score_falsy_queries(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score(0, choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+        match, score = find_best_match_with_score(False, choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+        match, score = find_best_match_with_score([], choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+        match, score = find_best_match_with_score({}, choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_falsy_choices(self):
+        match, score = find_best_match_with_score("apple", ())
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+        match, score = find_best_match_with_score("apple", set())
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+        match, score = find_best_match_with_score("apple", {})
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+
 if __name__ == "__main__":
     unittest.main()
