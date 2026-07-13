@@ -174,6 +174,54 @@ class LinkMetierStep(IExtractionStep):
                             cmd.add_edge(Edge(exg_node.id, metier_node.id))
 
 
+class LinkExploitationStep(IExtractionStep):
+    """
+    Extracts links between an exigence and the Phase projet named "Exploitation".
+    Filters rows where the "Exploitation" column contains "X" and "Etat de Conformité" contains "-".
+    """
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+        if "Exploitation" not in df.columns or "Etat de Conformité" not in df.columns:
+            return
+
+        if "Exigences" in df.columns:
+            exigence_col = "Exigences"
+        elif "Exigence" in df.columns:
+            exigence_col = "Exigence"
+        else:
+            return
+
+        phase_name = "Exploitation"
+
+        # Check if the node already exists
+        phase_node = qry.find_node_by_exact_metadata("name", phase_name, NodeType.PHASE_PROJET)
+
+        for _, row in df.iterrows():
+            exploitation_val = str(row.get("Exploitation", "")).strip()
+            etat_val = str(row.get("Etat de Conformité", "")).strip()
+
+            if exploitation_val.upper() == "X" and etat_val == "-":
+                exigence_text = str(row.get(exigence_col, "")).strip()
+                if exigence_text:
+                    # Create Phase projet node if it doesn't exist
+                    if not phase_node:
+                        phase_node = Node(id=f"PHASE-{phase_name}", type=NodeType.PHASE_PROJET, metadata={"name": phase_name})
+                        cmd.add_node(phase_node)
+
+                    exg_id = generate_short_id("EXG", exigence_text)
+                    exg_node = qry.get_node(exg_id)
+                    if not exg_node:
+                        exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
+                        cmd.add_node(exg_node)
+                        if proj_node:
+                            cmd.add_edge(Edge(proj_node.id, exg_node.id))
+
+                    # Link Exigence -> Phase projet
+                    cmd.add_edge(Edge(exg_node.id, phase_node.id))
+
+                    # Update the node in qry to avoid creating duplicates in the same run
+                    phase_node = qry.find_node_by_exact_metadata("name", phase_name, NodeType.PHASE_PROJET)
+
+
 class LinkPhaseProjetStep(IExtractionStep):
     """
     Links Exigences to "Phase projet".

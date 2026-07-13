@@ -6,7 +6,8 @@ from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.extractors import (
     CreateExigenceAndArticlesStep,
     LinkMetierStep,
-    LinkPhaseProjetStep
+    LinkPhaseProjetStep,
+    LinkExploitationStep
 )
 from graph_tool.infrastructure.data_loader import load_excel_with_2row_header
 import os
@@ -172,6 +173,57 @@ class TestExtractors(unittest.TestCase):
 
         phase_etude = [p for p in phases if p.metadata["name"] == "Etude"][0]
         self.assertIn(phase_etude.id, connected_ids)
+
+    def test_link_exploitation_step(self):
+        proj_node = Node(id="PROJ-Test", type=NodeType.PROJET, metadata={"name": "Test"})
+        self.cmd_handler.cmd.add_node(proj_node)
+
+        data = {
+            "Exigences": ["Exigence1", "Exigence2", "Exigence3", "Exigence4", "Exigence5"],
+            "Exploitation": ["X", "x", "", "X ", "X"],
+            "Etat de Conformité": ["-", "-", "-", "-", "Something else"]
+        }
+        df = pd.DataFrame(data)
+
+        step = LinkExploitationStep()
+        step.execute(df, proj_node, self.cmd_handler.cmd, self.cmd_handler.qry)
+
+        exigences = self.repo.get_nodes_by_type(NodeType.EXIGENCE)
+        self.assertEqual(len(exigences), 3)
+        exg_descriptions = [e.metadata["description"] for e in exigences]
+        self.assertIn("Exigence1", exg_descriptions)
+        self.assertIn("Exigence2", exg_descriptions)
+        self.assertIn("Exigence4", exg_descriptions)
+
+        phases = self.repo.get_nodes_by_type(NodeType.PHASE_PROJET)
+        self.assertEqual(len(phases), 1)
+        phase_node = phases[0]
+        self.assertEqual(phase_node.metadata["name"], "Exploitation")
+
+        edges = self.repo.get_all_edges()
+        exg1 = [e for e in exigences if e.metadata["description"] == "Exigence1"][0]
+        exg2 = [e for e in exigences if e.metadata["description"] == "Exigence2"][0]
+
+        # Phase and Proj nodes are added as target_id or source_id?
+        # cmd.add_edge(Edge(exg_node.id, phase_node.id)) -> source: exg, target: phase
+        # Let's check both ways just in case or correct it to match how edges are appended
+        target_ids_exg1 = [edge.target_id for edge in edges if edge.source_id == exg1.id]
+        if not target_ids_exg1: # If not found as source, maybe it's the target
+            target_ids_exg1 = [edge.source_id for edge in edges if edge.target_id == exg1.id]
+        self.assertIn(phase_node.id, target_ids_exg1)
+
+        target_ids_exg2 = [edge.target_id for edge in edges if edge.source_id == exg2.id]
+        if not target_ids_exg2:
+            target_ids_exg2 = [edge.source_id for edge in edges if edge.target_id == exg2.id]
+        self.assertIn(phase_node.id, target_ids_exg2)
+
+        # cmd.add_edge(Edge(proj_node.id, exg_node.id))
+        target_ids_proj = [edge.target_id for edge in edges if edge.source_id == proj_node.id]
+        if not target_ids_proj:
+            target_ids_proj = [edge.source_id for edge in edges if edge.target_id == proj_node.id]
+        self.assertIn(exg1.id, target_ids_proj)
+        self.assertIn(exg2.id, target_ids_proj)
+
 
 if __name__ == '__main__':
     unittest.main()
