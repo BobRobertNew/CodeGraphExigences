@@ -750,6 +750,57 @@ class QueryHandler:
 
         return pd.DataFrame(results)
 
+
+    def get_common_exigences_for_projects(self, project_a_name: str, project_b_name: str) -> pd.DataFrame:
+        """
+        Returns a DataFrame containing the common exigences between two projects,
+        along with their connected articles and sous-articles.
+
+        Args:
+            project_a_name (str): The name of the first project.
+            project_b_name (str): The name of the second project.
+
+        Returns:
+            pd.DataFrame: A DataFrame with columns 'Exigences', 'Articles', 'Sous_Article'.
+        """
+        columns = ["Exigences", "Articles", "Sous_Article"]
+
+        proj_a = self.qry.find_node_by_exact_metadata("name", project_a_name, NodeType.PROJET)
+        proj_b = self.qry.find_node_by_exact_metadata("name", project_b_name, NodeType.PROJET)
+
+        if not proj_a or not proj_b:
+            return pd.DataFrame(columns=columns)
+
+        exigences_a = {n.id: n for n in self.qry.get_neighbors(proj_a.id, NodeType.EXIGENCE)}
+        exigences_b = {n.id: n for n in self.qry.get_neighbors(proj_b.id, NodeType.EXIGENCE)}
+
+        common_exg_ids = set(exigences_a.keys()).intersection(set(exigences_b.keys()))
+
+        if not common_exg_ids:
+            return pd.DataFrame(columns=columns)
+
+        data = []
+        for exg_id in common_exg_ids:
+            exg_node = exigences_a[exg_id]
+            exigence_desc = exg_node.metadata.get("description", "")
+
+            sous_articles = self.qry.get_neighbors(exg_id, filter_type=NodeType.SOUS_ARTICLE)
+            if not sous_articles:
+                data.append({"Exigences": exigence_desc, "Articles": "", "Sous_Article": ""})
+            else:
+                for sart_node in sous_articles:
+                    sart_name = sart_node.metadata.get("name", "")
+                    articles = self.qry.get_neighbors(sart_node.id, filter_type=NodeType.ARTICLE)
+
+                    if not articles:
+                        data.append({"Exigences": exigence_desc, "Articles": "", "Sous_Article": sart_name})
+                    else:
+                        for art_node in articles:
+                            art_name = art_node.metadata.get("name", "")
+                            data.append({"Exigences": exigence_desc, "Articles": art_name, "Sous_Article": sart_name})
+
+        return pd.DataFrame(data, columns=columns)
+
     def get_exigencies_with_multiple_sous_articles(self) -> Dict[str, List[str]]:
         """
         Gets the list of exigencies that are connected to several "Sous article" nodes.
