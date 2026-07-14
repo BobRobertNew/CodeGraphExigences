@@ -324,5 +324,43 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_calls_extractOne_correctly(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 100)
+        find_best_match("apple", ["apple", "banana"], threshold=50)
+        mock_extractOne.assert_called_once_with("apple", ["apple", "banana"])
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_with_score_calls_extractOne_correctly(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 100)
+        find_best_match_with_score("apple", ["apple", "banana"], threshold=50)
+        mock_extractOne.assert_called_once_with("apple", ["apple", "banana"])
+
+    def test_find_best_match_with_score_none_query(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score(None, choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_none_choices(self):
+        match, score = find_best_match_with_score("apple", None)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_falsy_choices(self):
+        self.assertIsNone(find_best_match("apple", ()))
+        self.assertIsNone(find_best_match("apple", {}))
+
+    def test_find_best_match_single_choice(self):
+        self.assertEqual(find_best_match("apple", ["apple"]), "apple")
+        self.assertIsNone(find_best_match("banana", ["apple"]))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_type_error_on_booleans(self, mock_extractOne):
+        mock_extractOne.side_effect = TypeError("Mocked TypeError for invalid input")
+        with self.assertRaises(TypeError):
+            find_best_match(True, [True, False])
+
 if __name__ == "__main__":
     unittest.main()
