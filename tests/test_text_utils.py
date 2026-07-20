@@ -323,6 +323,40 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_almost_exact(self):
+        choices = ["apple", "applet", "apples"]
+        self.assertEqual(find_best_match("apple", choices, threshold=90), "apple")
+
+    def test_find_best_match_large_number_of_choices(self):
+        choices = ["banana"] * 1000 + ["apple"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+    def test_find_best_match_null_bytes(self):
+        choices = ["apple\x00", "banana\x00"]
+        self.assertEqual(find_best_match("apple\x00", choices), "apple\x00")
+
+    def test_find_best_match_control_characters(self):
+        choices = ["apple\x07", "banana\x08"]
+        self.assertEqual(find_best_match("apple\x07", choices), "apple\x07")
+
+    def test_find_best_match_with_score_almost_exact(self):
+        choices = ["apple", "applet", "apples"]
+        match, score = find_best_match_with_score("apple", choices, threshold=90)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 100)
+
+    def test_find_best_match_with_score_null_bytes(self):
+        choices = ["apple\x00", "banana\x00"]
+        match, score = find_best_match_with_score("apple\x00", choices)
+        self.assertEqual(match, "apple\x00")
+        self.assertEqual(score, 100)
+
+    def test_find_best_match_with_score_control_characters(self):
+        choices = ["apple\x07", "banana\x08"]
+        match, score = find_best_match_with_score("apple\x07", choices)
+        self.assertEqual(match, "apple\x07")
+        self.assertEqual(score, 100)
+
 
 if __name__ == "__main__":
     unittest.main()
