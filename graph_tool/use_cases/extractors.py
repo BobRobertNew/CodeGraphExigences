@@ -39,8 +39,11 @@ class LegacyExigenceExtractionStep(IExtractionStep):
             if not exigence_text:
                 continue
 
+            article_name = str(row.get("Article", "")).strip()
+            sous_article_name = str(row.get("Sous_Article", "")).strip()
+
             # Exigence Node
-            exg_id = generate_short_id("EXG", exigence_text)
+            exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
             exg_node = qry.get_node(exg_id)
             if not exg_node:
                 exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
@@ -104,7 +107,7 @@ class CreateExigenceAndArticlesStep(IExtractionStep):
                 continue
 
             # Exigence Node
-            exg_id = generate_short_id("EXG", exigence_text)
+            exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
             exg_node = qry.get_node(exg_id)
             if not exg_node:
                 exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
@@ -165,9 +168,11 @@ class LinkMetierStep(IExtractionStep):
             for _, row in df.iterrows():
                 val = str(row.get(col, "")).strip().upper()
                 if val == "X":
+                    article_name = str(row.get("Article", "")).strip()
+                    sous_article_name = str(row.get("Sous_Article", "")).strip()
                     exigence_text = str(row.get("Exigences", "")).strip()
                     if exigence_text:
-                        exg_id = generate_short_id("EXG", exigence_text)
+                        exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
                         exg_node = qry.get_node(exg_id)
                         if exg_node:
                             # Link Exigence -> Métier
@@ -198,9 +203,11 @@ class LinkPhaseProjetStep(IExtractionStep):
                 for _, row in df.iterrows():
                     val = str(row.get(phase_name, "")).strip().upper()
                     if val == "X":
+                        article_name = str(row.get("Article", "")).strip()
+                        sous_article_name = str(row.get("Sous_Article", "")).strip()
                         exigence_text = str(row.get("Exigences", "")).strip()
                         if exigence_text:
-                            exg_id = generate_short_id("EXG", exigence_text)
+                            exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
                             exg_node = qry.get_node(exg_id)
                             if exg_node:
                                 # Link Exigence -> Phase projet
@@ -239,11 +246,13 @@ class LinkPreuveStep(IExtractionStep):
                 cmd.add_node(metier_node)
 
             for _, row in df.iterrows():
+                article_name = str(row.get("Article", "")).strip()
+                sous_article_name = str(row.get("Sous_Article", "")).strip()
                 exigence_text = str(row.get(exigence_col, "")).strip()
                 if not exigence_text:
                     continue
 
-                exg_id = generate_short_id("EXG", exigence_text)
+                exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
                 exg_node = qry.get_node(exg_id)
                 if not exg_node:
                     continue
