@@ -420,11 +420,18 @@ class QueryHandler:
                     col_concerne = f"{metier}_Concerné"
                     if str(updates[col_concerne][i]).strip().upper() != "X":
                         continue
-                        
-                    for phase in p_phases:
-                        col_name = f"{metier}_Preuve de conformité"
-                        string_to_add = f"Phase {phase} : {p_text}"
 
+                    col_name = f"{metier}_Preuve de conformité"
+
+                    if p_phases:
+                        strings_to_add = [
+                            f"Phase {phase} : {p_text}"
+                            for phase in p_phases
+                        ]
+                    else:
+                        strings_to_add = [p_text]
+
+                    for string_to_add in strings_to_add:
                         existing = updates[col_name][i]
                         if existing:
                             updates[col_name][i] = existing + "\n" + string_to_add
