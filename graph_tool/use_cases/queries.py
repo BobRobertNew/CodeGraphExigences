@@ -345,6 +345,8 @@ class QueryHandler:
         Returns:
             pd.DataFrame: A new DataFrame with the appended graph information.
         """
+        from collections import defaultdict
+
         df = load_and_clean_data(data_source)
         df_clean = df.copy()
 
@@ -352,7 +354,14 @@ class QueryHandler:
         metiers_list = []
         preuves_list = []
 
-        for _, row in df_clean.iterrows():
+        # We will accumulate updates to apply to the dataframe later
+        # However, to avoid overwriting existing columns, we initialize updates using existing columns if they exist.
+        updates = defaultdict(lambda: [""] * len(df_clean))
+        for col in df_clean.columns:
+            updates[col] = df_clean[col].astype(str).tolist()
+
+        for i, (idx, row) in enumerate(df_clean.iterrows()):
+
             exigence_text = str(row.get("Exigences", "")).strip()
             if not exigence_text:
                 phases_list.append("")
@@ -378,9 +387,50 @@ class QueryHandler:
             metiers_list.append(", ".join(metiers))
             preuves_list.append(", ".join(preuves))
 
+            # --- New Logic ---
+            # 1. Add "X" to phase column
+            for phase in phases:
+                if phase:
+                    updates[phase][i] = "X"
+
+            # 2. Add "X" to métier concerne column
+            for metier in metiers:
+                if metier:
+                    updates[f"{metier}_Concerné"][i] = "X"
+
+            # 3. Add Preuve to métier preuve column
+            # We get preuves, then metier and phase related to each preuve.
+            # But the requirement specified: "get the «Preuve» type nodes related. Then get the «métier» type and the Phase_projet type nodes related to the preuve."
+            # Note: based on the user's answer, there should be a link between PREUVE and METIER / PHASE_PROJET
+            preuve_nodes = [n for n in neighbors if n.type == NodeType.PREUVE]
+
+            for p_node in preuve_nodes:
+                p_text = p_node.metadata.get("description", "")
+                if not p_text:
+                    continue
+
+                # Fetch related metier and phase for THIS preuve
+                p_neighbors = self.qry.get_neighbors(p_node.id)
+                p_metiers = [n.metadata.get("name", "") for n in p_neighbors if n.type == NodeType.METIER]
+                p_phases = [n.metadata.get("name", "") for n in p_neighbors if n.type == NodeType.PHASE_PROJET]
+
+                for metier in p_metiers:
+                    for phase in p_phases:
+                        col_name = f"{metier}_Preuve de conformité"
+                        string_to_add = f"Phase {phase} : {p_text}"
+
+                        existing = updates[col_name][i]
+                        if existing:
+                            updates[col_name][i] = existing + "\n" + string_to_add
+                        else:
+                            updates[col_name][i] = string_to_add
+
         df["Phase projet (Graph)"] = phases_list
         df["Métier (Graph)"] = metiers_list
         df["Preuve de conformité (Graph)"] = preuves_list
+
+        for col_name, col_data in updates.items():
+            df[col_name] = col_data
 
         return df
 

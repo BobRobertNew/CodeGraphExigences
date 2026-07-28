@@ -295,3 +295,62 @@ class TestQueryHandler(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+    def test_complete_excel_with_graph_info_additions(self):
+        # Setting up nodes
+        exg = Node(id="exg_mock", type=NodeType.EXIGENCE, metadata={"description": "Mock Exigence"})
+        ph1 = Node(id="ph_1", type=NodeType.PHASE_PROJET, metadata={"name": "Realisation"})
+        ph2 = Node(id="ph_2", type=NodeType.PHASE_PROJET, metadata={"name": "Conception"})
+        met1 = Node(id="met_1", type=NodeType.METIER, metadata={"name": "GC"})
+        prv1 = Node(id="prv_1", type=NodeType.PREUVE, metadata={"description": "Preuve A"})
+        prv2 = Node(id="prv_2", type=NodeType.PREUVE, metadata={"description": "Preuve B"})
+
+        for n in [exg, ph1, ph2, met1, prv1, prv2]:
+            self.repo.add_node(n)
+
+        # Edges for Exigence
+        self.repo.add_edge(Edge(exg.id, ph1.id))
+        self.repo.add_edge(Edge(exg.id, ph2.id))
+        self.repo.add_edge(Edge(exg.id, met1.id))
+        self.repo.add_edge(Edge(exg.id, prv1.id))
+        self.repo.add_edge(Edge(exg.id, prv2.id))
+
+        # Edges for Preuves
+        # Preuve 1 is linked to GC and Realisation
+        self.repo.add_edge(Edge(prv1.id, ph1.id))
+        self.repo.add_edge(Edge(prv1.id, met1.id))
+
+        # Preuve 2 is linked to GC and Conception
+        self.repo.add_edge(Edge(prv2.id, ph2.id))
+        self.repo.add_edge(Edge(prv2.id, met1.id))
+
+        df = pd.DataFrame([
+            {"Exigences": "Mock Exigence"},
+            {"Exigences": "Unknown Exigence"}
+        ])
+
+        df_res = self.query_handler.complete_excel_with_graph_info(df)
+
+        # Verify columns exist
+        self.assertIn("Realisation", df_res.columns)
+        self.assertIn("Conception", df_res.columns)
+        self.assertIn("GC_Concerné", df_res.columns)
+        self.assertIn("GC_Preuve de conformité", df_res.columns)
+
+        # Verify values for "Mock Exigence"
+        self.assertEqual(df_res.loc[0, "Realisation"], "X")
+        self.assertEqual(df_res.loc[0, "Conception"], "X")
+        self.assertEqual(df_res.loc[0, "GC_Concerné"], "X")
+
+        expected_preuves = "Phase Realisation : Preuve A\nPhase Conception : Preuve B"
+        # The order of phase proofs might differ depending on how get_neighbors returns them
+        res_preuves = df_res.loc[0, "GC_Preuve de conformité"]
+        self.assertIn("Phase Realisation : Preuve A", res_preuves)
+        self.assertIn("Phase Conception : Preuve B", res_preuves)
+        self.assertEqual(len(res_preuves.split("\n")), 2)
+
+        # Verify values for "Unknown Exigence"
+        self.assertEqual(df_res.loc[1, "Realisation"], "")
+        self.assertEqual(df_res.loc[1, "Conception"], "")
+        self.assertEqual(df_res.loc[1, "GC_Concerné"], "")
+        self.assertEqual(df_res.loc[1, "GC_Preuve de conformité"], "")
