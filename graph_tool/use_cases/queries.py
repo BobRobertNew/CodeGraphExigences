@@ -362,6 +362,8 @@ class QueryHandler:
 
         for i, (idx, row) in enumerate(df_clean.iterrows()):
 
+            article_name = str(row.get("Article", "")).strip()
+            sous_article_name = str(row.get("Sous_Article", "")).strip()
             exigence_text = str(row.get("Exigences", "")).strip()
             if not exigence_text:
                 phases_list.append("")
@@ -369,14 +371,13 @@ class QueryHandler:
                 preuves_list.append("")
                 continue
 
-            nodes = self._get_exigence_nodes_from_texts([exigence_text], exact_match=True)
-            if not nodes:
+            exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
+            exg_node = self.qry.get_node(exg_id)
+            if not exg_node:
                 phases_list.append("")
                 metiers_list.append("")
                 preuves_list.append("")
                 continue
-
-            exg_node = nodes[0]
             neighbors = self.qry.get_neighbors(exg_node.id)
 
             phases = [n.metadata.get("name", "") for n in neighbors if n.type == NodeType.PHASE_PROJET]
