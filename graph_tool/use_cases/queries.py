@@ -416,6 +416,11 @@ class QueryHandler:
                 p_phases = [n.metadata.get("name", "") for n in p_neighbors if n.type == NodeType.PHASE_PROJET]
 
                 for metier in p_metiers:
+                    # Ajouter la preuve uniquement si le métier est concerné
+                    col_concerne = f"{metier}_Concerné"
+                    if str(updates[col_concerne][i]).strip().upper() != "X":
+                        continue
+                        
                     for phase in p_phases:
                         col_name = f"{metier}_Preuve de conformité"
                         string_to_add = f"Phase {phase} : {p_text}"
