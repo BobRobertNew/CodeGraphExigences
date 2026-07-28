@@ -264,14 +264,40 @@ class LinkPreuveStep(IExtractionStep):
                         continue
 
                     # Regex pattern to match Phase YYY: where YYY can be Conception, Exploitation, Commun, Etude, Contrat, Réalisation
-                    pattern = r"(?i)Phase\s+(Conception|Exploitation|Commun|Etude|Contrat|Réalisation)\s*:"
+                    #pattern = r"(?i)Phase\s+(Conception|Exploitation|Commun|Etude|Contrat|Réalisation)\s*:"
+                    pattern = r"(?i)Phase\s+(Conception|Exploitation|Commun|[ÉE]tude|Contrat|Réalisation)\s*:"
                     matches = list(re.finditer(pattern, preuve_text))
 
                     if not matches:
+                        # Aucune phase projet identifiée :
+                        # toute la cellule est considérée comme une preuve
+                        content = preuve_text.strip()
+
+                        if not content:
+                            continue
+
+                        # Create Preuve Node
+                        preuve_id = generate_short_id("PRV", content)
+                        preuve_node = qry.get_node(preuve_id)
+
+                        if not preuve_node:
+                            preuve_node = Node(
+                                id=preuve_id,
+                                type=NodeType.PREUVE,
+                                metadata={"description": content}
+                            )
+                            cmd.add_node(preuve_node)
+
+                        # Connect Preuve to Exigence and Métier
+                        # No Phase Projet edge because no phase was identified
+                        cmd.add_edge(Edge(preuve_node.id, exg_node.id))
+                        cmd.add_edge(Edge(preuve_node.id, metier_node.id))
+
                         continue
 
+
                     for i, match in enumerate(matches):
-                        phase_name = match.group(1).capitalize()
+                        phase_name = match.group(1).capitalize().replace("Étude", "Etude")
 
                         actual_phase_name = phase_name
 
