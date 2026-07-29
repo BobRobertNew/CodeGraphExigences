@@ -43,7 +43,7 @@ class TestTextUtils(unittest.TestCase):
         # If we set threshold lower, it should pass
         self.assertEqual(find_best_match("app", choices, threshold=50), "apple")
 
-    def test_find_best_match_empty_query(self):
+    def test_find_best_match_empty_query_string(self):
         choices = ["apple", "banana", "cherry"]
         self.assertIsNone(find_best_match("", choices))
 
@@ -51,11 +51,14 @@ class TestTextUtils(unittest.TestCase):
         choices = ["apple", "banana", "cherry"]
         self.assertIsNone(find_best_match(None, choices))
 
-    def test_find_best_match_empty_choices(self):
+    def test_find_best_match_empty_choices_list(self):
         self.assertIsNone(find_best_match("apple", []))
 
     def test_find_best_match_none_choices(self):
         self.assertIsNone(find_best_match("apple", None))
+
+    def test_find_best_match_none_query_and_choices(self):
+        self.assertIsNone(find_best_match(None, None))
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_result_none(self, mock_extractOne):
@@ -91,16 +94,16 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(find_best_match("appl", choices, threshold=100))
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
-    def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
+    def test_find_best_match_score_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
-    def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
+    def test_find_best_match_score_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -130,7 +133,7 @@ class TestTextUtils(unittest.TestCase):
         choices = {"b": "banana", "a": "apple"}
         self.assertEqual(find_best_match("apple", choices), "apple")
 
-    def test_find_best_match_case_sensitivity(self):
+    def test_find_best_match_case_sensitivity_check(self):
         # rapidfuzz is case-sensitive by default
         self.assertIsNone(find_best_match("apple", ["APPLE"]))
 
@@ -279,7 +282,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +290,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
