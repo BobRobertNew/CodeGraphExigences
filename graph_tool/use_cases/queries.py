@@ -4,6 +4,7 @@ from ..domain.entities import Node, NodeType
 from ..domain.ports import IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match, find_best_match_with_score
 from ..infrastructure.data_loader import load_and_clean_data
+from tqdm import tqdm
 
 class QueryHandler:
     """
@@ -360,7 +361,8 @@ class QueryHandler:
         for col in df_clean.columns:
             updates[col] = df_clean[col].astype(str).tolist()
 
-        for i, (idx, row) in enumerate(df_clean.iterrows()):
+        #for i, (idx, row) in enumerate(df_clean.iterrows()):
+        for i, (idx, row) in enumerate(tqdm(df_clean.iterrows(), total=len(df_clean), desc="Processing requirements")):
 
             article_name = str(row.get("Article", "")).strip()
             sous_article_name = str(row.get("Sous_Article", "")).strip()
