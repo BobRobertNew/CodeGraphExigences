@@ -911,7 +911,7 @@ class QueryHandler:
 
                     domains = self.qry.get_neighbors(
                         article.id,
-                        NodeType.DOMAIN
+                        NodeType.DOMAINE
                     )
 
                     # Un article doit être lié à un seul domaine
