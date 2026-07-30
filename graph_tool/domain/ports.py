@@ -6,12 +6,13 @@ class IGraphCommand(ABC):
     """Interface for operations that modify the graph."""
 
     @abstractmethod
-    def add_node(self, node: Node) -> None:
+    def add_node(self, node: Node, owner: str) -> None:
         """
         Adds a new node to the graph.
 
         Args:
             node (Node): The node to add to the graph.
+            owner (str): The owner of the node.
         """
         pass
 
@@ -32,6 +33,18 @@ class IGraphCommand(ABC):
 
         Args:
             node_id (str): The unique identifier of the node to remove.
+        """
+        pass
+
+
+
+    @abstractmethod
+    def add_log(self, log_entry: dict) -> None:
+        """
+        Adds a log entry for operations performed on the graph.
+
+        Args:
+            log_entry (dict): The log entry detailing the action.
         """
         pass
 

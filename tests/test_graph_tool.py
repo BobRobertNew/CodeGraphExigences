@@ -23,7 +23,7 @@ class TestGraphTool(unittest.TestCase):
         }
         df = pd.DataFrame(data)
 
-        self.commands.add_project_exigences("Projet Alpha", df)
+        self.commands.add_project_exigences("Projet Alpha", df, owner="TestOwner", author="TestAuthor")
 
         proj_nodes = self.repo.get_nodes_by_type(NodeType.PROJET)
         self.assertEqual(len(proj_nodes), 1)
@@ -46,14 +46,14 @@ class TestGraphTool(unittest.TestCase):
     def test_add_rex_with_fuzzy_matching(self):
         # Create base
         data = {"Exigence": ["Sécurité du système"]}
-        self.commands.add_project_exigences("Projet Alpha", pd.DataFrame(data))
+        self.commands.add_project_exigences("Projet Alpha", pd.DataFrame(data), owner="TestOwner", author="TestAuthor")
 
         # Add REX with slightly different text to test fuzzy matching
         rex_data = {
             "Exigence": ["Securité systeme"], # Note the missing accent
             "REX Detail": ["Test detail"]
         }
-        self.commands.add_rex("Projet Alpha", pd.DataFrame(rex_data))
+        self.commands.add_rex("Projet Alpha", pd.DataFrame(rex_data), owner="TestOwner", author="TestAuthor")
 
         rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
         self.assertEqual(len(rex_nodes), 1)
@@ -70,9 +70,9 @@ class TestGraphTool(unittest.TestCase):
         data2 = {"Exigence": ["Exigence A", "Exigence C"]}
         data3 = {"Exigence": ["Exigence D"]}
 
-        self.commands.add_project_exigences("P1", pd.DataFrame(data1))
-        self.commands.add_project_exigences("P2", pd.DataFrame(data2))
-        self.commands.add_project_exigences("P3", pd.DataFrame(data3))
+        self.commands.add_project_exigences("P1", pd.DataFrame(data1), owner="TestOwner", author="TestAuthor")
+        self.commands.add_project_exigences("P2", pd.DataFrame(data2), owner="TestOwner", author="TestAuthor")
+        self.commands.add_project_exigences("P3", pd.DataFrame(data3), owner="TestOwner", author="TestAuthor")
 
         # P1 and P2 share Exigence A
         similar = self.queries.find_most_similar_projects("P1", ["Exigence A"], top_k=1)
@@ -82,8 +82,8 @@ class TestGraphTool(unittest.TestCase):
         data1 = {"Exigence": ["Exigence Alpha", "Exigence Beta"]}
         data2 = {"Exigence": ["Exigence Alpha", "Exigence Gamma"]}
 
-        self.commands.add_project_exigences("P1", pd.DataFrame(data1))
-        self.commands.add_project_exigences("P2", pd.DataFrame(data2))
+        self.commands.add_project_exigences("P1", pd.DataFrame(data1), owner="TestOwner", author="TestAuthor")
+        self.commands.add_project_exigences("P2", pd.DataFrame(data2), owner="TestOwner", author="TestAuthor")
 
         # Test exact match True, should find P2 with exact string
         similar_exact = self.queries.find_most_similar_projects("P1", ["Exigence Alpha"], top_k=1, exact_match=True)
@@ -101,14 +101,14 @@ class TestGraphTool(unittest.TestCase):
         # Create base
         data1 = {"Exigence": ["Sécurité du système", "Exigence Z"]}
         data2 = {"Exigence": ["Sécurité du système", "Exigence Y"]}
-        self.commands.add_project_exigences("P1", pd.DataFrame(data1))
-        self.commands.add_project_exigences("P2", pd.DataFrame(data2))
+        self.commands.add_project_exigences("P1", pd.DataFrame(data1), owner="TestOwner", author="TestAuthor")
+        self.commands.add_project_exigences("P2", pd.DataFrame(data2), owner="TestOwner", author="TestAuthor")
 
         rex_data = {
             "Exigence": ["Sécurité du système"],
             "REX Detail": ["Detail REX 1"]
         }
-        self.commands.add_rex("P2", pd.DataFrame(rex_data))
+        self.commands.add_rex("P2", pd.DataFrame(rex_data), owner="TestOwner", author="TestAuthor")
 
         # Test get_useful_rex exact match with correct string
         useful_rex_exact = self.queries.get_useful_rex("P1", ["Sécurité du système"], exact_match=True)
@@ -124,7 +124,7 @@ class TestGraphTool(unittest.TestCase):
 
     def test_enhancement_integrity(self):
         data = {"Exigence": ["Exigence Sans Preuve"], "Preuve de conformité": [""]}
-        self.commands.add_project_exigences("P1", pd.DataFrame(data))
+        self.commands.add_project_exigences("P1", pd.DataFrame(data), owner="TestOwner", author="TestAuthor")
 
         issues = self.enhancements.check_graph_integrity()
         self.assertEqual(len(issues["exigence_without_preuve"]), 1)

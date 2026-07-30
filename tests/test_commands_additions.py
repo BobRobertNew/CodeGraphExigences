@@ -15,7 +15,7 @@ class TestCommandAddDocuments(unittest.TestCase):
             'Preuve': ['Prv1', 'Prv2']
         })
 
-        self.cmd.add_documents('TestProject', df)
+        self.cmd.add_documents('TestProject', df, owner='TestOwner', author='TestAuthor')
 
         nodes = self.repo.get_all_nodes()
         self.assertTrue(any(n.type == NodeType.PROJET and n.metadata.get('name') == 'TestProject' for n in nodes))
@@ -42,6 +42,6 @@ class TestCommandAddDocuments(unittest.TestCase):
             'D': ['Doc1'],
             'P': ['Prv1']
         })
-        self.cmd.add_documents('TestProject', df, doc_col='D', preuve_col='P')
+        self.cmd.add_documents('TestProject', df, doc_col='D', preuve_col='P', owner='TestOwner', author='TestAuthor')
         nodes = self.repo.get_all_nodes()
         self.assertTrue(any(n.type == NodeType.DOCUMENT and n.metadata.get('name') == 'Doc1' for n in nodes))

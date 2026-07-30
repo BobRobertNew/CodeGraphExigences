@@ -38,6 +38,8 @@ class TestExtractors(unittest.TestCase):
         self.cmd_handler.add_project_exigences(
             project_name="TestProj",
             data_source=df,
+            owner="TestOwner",
+            author="TestAuthor",
             loader=lambda x: x, # Dummy loader since we pass DF
             steps=steps
         )
@@ -124,7 +126,7 @@ class TestExtractors(unittest.TestCase):
         from graph_tool.utils.text_utils import generate_short_id
         exg_id = generate_short_id("EXG", exigence_text)
         exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
-        self.cmd_handler.cmd.add_node(exg_node)
+        self.cmd_handler.cmd.add_node(exg_node, owner='TestOwner')
 
         data = {
             "Exigences": [exigence_text],
@@ -135,7 +137,7 @@ class TestExtractors(unittest.TestCase):
 
         from graph_tool.use_cases.extractors import LinkPreuveStep
         step = LinkPreuveStep()
-        step.execute(df, None, self.cmd_handler.cmd, self.cmd_handler.qry)
+        step.execute(df, None, self.cmd_handler.cmd, self.cmd_handler.qry, owner="TestOwner")
 
         preuves = self.repo.get_nodes_by_type(NodeType.PREUVE)
         self.assertEqual(len(preuves), 2)

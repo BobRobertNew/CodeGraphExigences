@@ -20,7 +20,7 @@ class TestCommands(unittest.TestCase):
         # Catch warnings to ensure no warnings are emitted
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            self.commands.add_project_exigences("P1", df)
+            self.commands.add_project_exigences("P1", df, owner="TestOwner", author="TestAuthor")
             self.assertEqual(len(w), 0)
 
         exg_nodes = self.repo.get_nodes_by_type(NodeType.EXIGENCE)
@@ -39,7 +39,7 @@ class TestCommands(unittest.TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            self.commands.add_project_exigences("P2", df)
+            self.commands.add_project_exigences("P2", df, owner="TestOwner", author="TestAuthor")
 
             # Check warning
             self.assertEqual(len(w), 1)
@@ -57,7 +57,7 @@ class TestCommands(unittest.TestCase):
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
-            self.commands.add_project_exigences("P3", df)
+            self.commands.add_project_exigences("P3", df, owner="TestOwner", author="TestAuthor")
 
             # Check warning
             self.assertEqual(len(w), 1)
@@ -70,7 +70,7 @@ class TestCommands(unittest.TestCase):
         # Initial project and exigences
         self.commands.add_project_exigences("ProjA", pd.DataFrame({
             "Exigence": ["Exg1"]
-        }))
+        }), owner="TestOwner", author="TestAuthor")
 
         # Add REX using legacy column names
         data = {
@@ -79,7 +79,7 @@ class TestCommands(unittest.TestCase):
         }
         df = pd.DataFrame(data)
 
-        self.commands.add_rex("ProjA", df)
+        self.commands.add_rex("ProjA", df, owner="TestOwner", author="TestAuthor")
 
         rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
         self.assertEqual(len(rex_nodes), 1)
@@ -93,7 +93,7 @@ class TestCommands(unittest.TestCase):
         # Initial project and exigences
         self.commands.add_project_exigences("ProjB", pd.DataFrame({
             "Exigence": ["Exg2"]
-        }))
+        }), owner="TestOwner", author="TestAuthor")
 
         # Simulating the loader behavior with a custom function
         def mock_loader(data_source):
@@ -105,7 +105,7 @@ class TestCommands(unittest.TestCase):
         }
         df = pd.DataFrame(data)
 
-        self.commands.add_rex("ProjB", df, loader=mock_loader)
+        self.commands.add_rex("ProjB", df, loader=mock_loader, owner="TestOwner", author="TestAuthor")
 
         rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
         self.assertEqual(len(rex_nodes), 1)
@@ -115,7 +115,7 @@ class TestCommands(unittest.TestCase):
         # Initial project and exigences
         self.commands.add_project_exigences("ProjC", pd.DataFrame({
             "Exigence": ["Exg3"]
-        }))
+        }), owner="TestOwner", author="TestAuthor")
 
         data = {
             "Exigence": ["Exg3"],
@@ -124,14 +124,14 @@ class TestCommands(unittest.TestCase):
         df = pd.DataFrame(data)
 
         with self.assertRaises(ValueError) as context:
-            self.commands.add_rex("ProjC", df)
+            self.commands.add_rex("ProjC", df, owner="TestOwner", author="TestAuthor")
 
         self.assertIn("Neither 'REX Detail' nor 'Commentaire general' column is found", str(context.exception))
 
     def test_add_rex_exact_match_only(self):
         self.commands.add_project_exigences("ProjD", pd.DataFrame({
             "Exigence": ["Exg4 Exact"]
-        }))
+        }), owner="TestOwner", author="TestAuthor")
 
         data = {
             "Exigence": ["Exg4 Exact", "Exg4 Typo"],
@@ -142,7 +142,7 @@ class TestCommands(unittest.TestCase):
         def mock_loader(data_source):
             return data_source
 
-        self.commands.add_rex("ProjD", df, loader=mock_loader, exact_match_only=True)
+        self.commands.add_rex("ProjD", df, loader=mock_loader, exact_match_only=True, owner="TestOwner", author="TestAuthor")
 
         rex_nodes = self.repo.get_nodes_by_type(NodeType.REX)
         self.assertEqual(len(rex_nodes), 1)
@@ -151,14 +151,14 @@ class TestCommands(unittest.TestCase):
     def test_add_specification_exact_match_only(self):
         self.commands.add_project_exigences("ProjE", pd.DataFrame({
             "Exigence": ["Exg5 Exact"]
-        }))
+        }), owner="TestOwner", author="TestAuthor")
 
         data = {
             "Exigence": ["Exg5 Exact", "Exg5 Typo"]
         }
         df = pd.DataFrame(data)
 
-        self.commands.add_specification("SPEC-1", "Spec 1", df, exact_match_only=True)
+        self.commands.add_specification("SPEC-1", "Spec 1", df, exact_match_only=True, owner="TestOwner", author="TestAuthor")
 
         # In exact match only, we expect only the exact match to be linked to spec
         spec_nodes = self.repo.get_nodes_by_type(NodeType.SPECIFICATION)
@@ -176,7 +176,7 @@ class TestCommands(unittest.TestCase):
         exigence_text = "Exigence Preuve"
         exg_id = generate_short_id("EXG", exigence_text)
         exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
-        self.repo.add_node(exg_node)
+        self.repo.add_node(exg_node, owner="TestOwner")
 
         data = {
             "Exigences": [exigence_text],
@@ -189,7 +189,7 @@ class TestCommands(unittest.TestCase):
         def mock_loader(data_source):
             return data_source
 
-        self.commands.add_preuves(data_source=df, loader=mock_loader)
+        self.commands.add_preuves(data_source=df, loader=mock_loader, owner="TestOwner", author="TestAuthor")
 
         preuves = self.repo.get_nodes_by_type(NodeType.PREUVE)
         self.assertEqual(len(preuves), 1)

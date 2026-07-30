@@ -41,17 +41,17 @@ def main():
 
     # Load exigencies for 3 different projects
     print("Loading Project A...")
-    commands.add_project_exigences("Project A", file_project_A,steps=[CreateExigenceAndArticlesStep(), LinkMetierStep(), LinkPhaseProjetStep()])
+    commands.add_project_exigences("Project A", file_project_A, owner="Equipe A", author="Admin", steps=[CreateExigenceAndArticlesStep(), LinkMetierStep(), LinkPhaseProjetStep()])
 
     print("Loading Project B...")
-    commands.add_project_exigences("Project B", file_project_B,steps=[CreateExigenceAndArticlesStep(), LinkMetierStep(), LinkPhaseProjetStep()])
+    commands.add_project_exigences("Project B", file_project_B, owner="Equipe B", author="Admin", steps=[CreateExigenceAndArticlesStep(), LinkMetierStep(), LinkPhaseProjetStep()])
 
     print("Loading Project C...")
-    commands.add_project_exigences("Project C", file_project_C)
+    commands.add_project_exigences("Project C", file_project_C, owner="Equipe C", author="Admin")
 
     # Load REX for Project A
     print("Loading REX for Project A...")
-    commands.add_rex("Project A", file_rex_A,exact_match_only=True)
+    commands.add_rex("Project A", file_rex_A, owner="Equipe REX", author="User", exact_match_only=True)
 
     print("\nData loaded successfully!")
 

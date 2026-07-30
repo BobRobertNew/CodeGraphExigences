@@ -21,7 +21,7 @@ class TestStorageHandler(unittest.TestCase):
             "Preuve de conformité": ["Audit code"]
         }
         df = pd.DataFrame(data)
-        self.commands.add_project_exigences("Projet Storage Test", df)
+        self.commands.add_project_exigences("Projet Storage Test", df, owner="TestOwner", author="TestAuthor")
 
         self.test_files = ["test_graph.graphml", "test_graph.gexf", "test_graph.json", "test_graph.pkl"]
 

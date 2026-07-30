@@ -1,4 +1,6 @@
 import networkx as nx
+from datetime import datetime
+import os
 from typing import List, Optional, Any
 import json
 import pickle
@@ -16,6 +18,7 @@ class NetworkXGraphRepository(IGraphCommand, IGraphQuery, IGraphStorage):
         Initializes an empty NetworkX graph.
         """
         self.graph = nx.Graph()
+        self.logs = []
 
     def save_graph(self, filepath: str, format: str = "graphml") -> None:
         """
@@ -42,6 +45,13 @@ class NetworkXGraphRepository(IGraphCommand, IGraphQuery, IGraphStorage):
         else:
             raise ValueError(f"Unsupported format: {format}")
 
+
+        # Save logs to a corresponding JSON file
+        base_name, _ = os.path.splitext(filepath)
+        log_filepath = f"{base_name}_logs.json"
+        with open(log_filepath, 'w', encoding='utf-8') as f:
+            json.dump(self.logs, f, indent=4, ensure_ascii=False)
+
     def load_graph(self, filepath: str, format: str = "graphml") -> None:
         """
         Loads the graph from a file in the specified format.
@@ -67,16 +77,34 @@ class NetworkXGraphRepository(IGraphCommand, IGraphQuery, IGraphStorage):
         else:
             raise ValueError(f"Unsupported format: {format}")
 
-    def add_node(self, node: Node) -> None:
+
+        # Load logs if the corresponding JSON file exists
+        base_name, _ = os.path.splitext(filepath)
+        log_filepath = f"{base_name}_logs.json"
+        if os.path.exists(log_filepath):
+            with open(log_filepath, 'r', encoding='utf-8') as f:
+                try:
+                    self.logs = json.load(f)
+                except json.JSONDecodeError:
+                    self.logs = []
+        else:
+            self.logs = []
+
+    def add_node(self, node: Node, owner: str) -> None:
         """
         Adds a node to the NetworkX graph.
 
         Args:
             node (Node): The node to add. If it already exists, nothing happens.
+            owner (str): The owner of the node.
         """
         if not self.graph.has_node(node.id):
             metadata_dict = node.metadata.copy()
             metadata_dict["type"] = node.type.value
+            metadata_dict["owner"] = owner
+            if "status" not in metadata_dict:
+                metadata_dict["status"] = "Expérimental"
+            metadata_dict["creation_date"] = datetime.now().isoformat()
             self.graph.add_node(node.id, **metadata_dict)
 
     def add_edge(self, edge: Edge) -> None:
@@ -225,3 +253,12 @@ class NetworkXGraphRepository(IGraphCommand, IGraphQuery, IGraphStorage):
             type_str = meta.pop("type", "LINKED_TO")
             edges.append(Edge(source_id=u, target_id=v, type=type_str, metadata=meta))
         return edges
+
+    def add_log(self, log_entry: dict) -> None:
+        """
+        Adds a log entry for operations performed on the graph.
+
+        Args:
+            log_entry (dict): The log entry detailing the action.
+        """
+        self.logs.append(log_entry)

@@ -11,7 +11,7 @@ class IExtractionStep(ABC):
     Interface for a step in the project exigences extraction pipeline.
     """
     @abstractmethod
-    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery, owner: str) -> None:
         """
         Executes the extraction step.
 
@@ -28,7 +28,7 @@ class LegacyExigenceExtractionStep(IExtractionStep):
     The original extraction logic that expects 'Normes', 'Exigence', 'Phase projet',
     'Métier', 'Preuve de conformité' columns.
     """
-    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery, owner: str) -> None:
         for _, row in df.iterrows():
             loi_name = str(row.get("Normes", "")).strip()
             exigence_text = str(row.get("Exigence", "")).strip()
@@ -47,7 +47,7 @@ class LegacyExigenceExtractionStep(IExtractionStep):
             exg_node = qry.get_node(exg_id)
             if not exg_node:
                 exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
-                cmd.add_node(exg_node)
+                cmd.add_node(exg_node, owner)
 
             # Link Project -> Exigence
             cmd.add_edge(Edge(proj_node.id, exg_node.id))
@@ -57,7 +57,7 @@ class LegacyExigenceExtractionStep(IExtractionStep):
                 loi_node = qry.find_node_by_exact_metadata("name", loi_name, NodeType.LOI)
                 if not loi_node:
                     loi_node = Node(id=f"LOI-{loi_name}", type=NodeType.LOI, metadata={"name": loi_name})
-                    cmd.add_node(loi_node)
+                    cmd.add_node(loi_node, owner)
                 # Link Exigence -> Loi
                 cmd.add_edge(Edge(exg_node.id, loi_node.id))
 
@@ -71,7 +71,7 @@ class LegacyExigenceExtractionStep(IExtractionStep):
                 phase_node = qry.find_node_by_exact_metadata("name", normalized_phase, NodeType.PHASE_PROJET)
                 if not phase_node:
                     phase_node = Node(id=f"PHASE-{normalized_phase}", type=NodeType.PHASE_PROJET, metadata={"name": normalized_phase})
-                    cmd.add_node(phase_node)
+                    cmd.add_node(phase_node, owner)
                 cmd.add_edge(Edge(exg_node.id, phase_node.id))
 
             # Métier Node
@@ -79,7 +79,7 @@ class LegacyExigenceExtractionStep(IExtractionStep):
                 metier_node = qry.find_node_by_exact_metadata("name", metier_name, NodeType.METIER)
                 if not metier_node:
                     metier_node = Node(id=f"METIER-{metier_name}", type=NodeType.METIER, metadata={"name": metier_name})
-                    cmd.add_node(metier_node)
+                    cmd.add_node(metier_node, owner)
                 cmd.add_edge(Edge(exg_node.id, metier_node.id))
 
             # Preuve de conformité Node
@@ -88,7 +88,7 @@ class LegacyExigenceExtractionStep(IExtractionStep):
                 preuve_node = qry.get_node(preuve_id)
                 if not preuve_node:
                     preuve_node = Node(id=preuve_id, type=NodeType.PREUVE, metadata={"description": preuve_text})
-                    cmd.add_node(preuve_node)
+                    cmd.add_node(preuve_node, owner)
                 cmd.add_edge(Edge(exg_node.id, preuve_node.id))
 
 
@@ -97,7 +97,7 @@ class CreateExigenceAndArticlesStep(IExtractionStep):
     Extracts information from "Article", "Sous_Article", and "Exigences" columns.
     Creates Article, Sous Article, and Exigence nodes and links them appropriately.
     """
-    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery, owner: str) -> None:
         for _, row in df.iterrows():
             article_name = str(row.get("Article", "")).strip()
             sous_article_name = str(row.get("Sous_Article", "")).strip()
@@ -111,7 +111,7 @@ class CreateExigenceAndArticlesStep(IExtractionStep):
             exg_node = qry.get_node(exg_id)
             if not exg_node:
                 exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
-                cmd.add_node(exg_node)
+                cmd.add_node(exg_node, owner)
 
             # Link Project -> Exigence
             cmd.add_edge(Edge(proj_node.id, exg_node.id))
@@ -124,7 +124,7 @@ class CreateExigenceAndArticlesStep(IExtractionStep):
                 art_node = qry.get_node(art_id)
                 if not art_node:
                     art_node = Node(id=art_id, type=NodeType.ARTICLE, metadata={"name": article_name})
-                    cmd.add_node(art_node)
+                    cmd.add_node(art_node, owner)
                 current_parent = art_node
 
             # Sous Article Node
@@ -133,7 +133,7 @@ class CreateExigenceAndArticlesStep(IExtractionStep):
                 sous_art_node = qry.get_node(sous_art_id)
                 if not sous_art_node:
                     sous_art_node = Node(id=sous_art_id, type=NodeType.SOUS_ARTICLE, metadata={"name": sous_article_name})
-                    cmd.add_node(sous_art_node)
+                    cmd.add_node(sous_art_node, owner)
 
                 if current_parent:
                     # Link Article -> Sous Article
@@ -151,7 +151,7 @@ class LinkMetierStep(IExtractionStep):
     Extracts "Métier" nodes from columns ending with "_Concerné".
     For each métier, links it to Exigences if the corresponding column contains "X".
     """
-    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery, owner: str) -> None:
         metier_cols = [col for col in df.columns if str(col).endswith("_Concerné")]
 
         for col in metier_cols:
@@ -162,7 +162,7 @@ class LinkMetierStep(IExtractionStep):
             metier_node = qry.find_node_by_exact_metadata("name", metier_name, NodeType.METIER)
             if not metier_node:
                 metier_node = Node(id=f"METIER-{metier_name}", type=NodeType.METIER, metadata={"name": metier_name})
-                cmd.add_node(metier_node)
+                cmd.add_node(metier_node, owner)
 
             # Iterate through the DataFrame to find "X" in this column
             for _, row in df.iterrows():
@@ -185,7 +185,7 @@ class LinkPhaseProjetStep(IExtractionStep):
     The possible phases are: "Conception", "Exploitation", "Commun", "Phase Etude", "Phase Contrat", "Phase Réalisation".
     If the column exists and contains an "X", links the Exigence to the corresponding Phase projet.
     """
-    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery, owner: str) -> None:
         possible_phases = ["Conception", "Exploitation", "Commun", "Phase Etude", "Phase Contrat", "Phase Réalisation"]
 
         for phase_name in possible_phases:
@@ -198,7 +198,7 @@ class LinkPhaseProjetStep(IExtractionStep):
                 phase_node = qry.find_node_by_exact_metadata("name", normalized_phase, NodeType.PHASE_PROJET)
                 if not phase_node:
                     phase_node = Node(id=f"PHASE-{normalized_phase}", type=NodeType.PHASE_PROJET, metadata={"name": normalized_phase})
-                    cmd.add_node(phase_node)
+                    cmd.add_node(phase_node, owner)
 
                 for _, row in df.iterrows():
                     val = str(row.get(phase_name, "")).strip().upper()
@@ -219,7 +219,7 @@ class LinkPreuveStep(IExtractionStep):
     Extracts PREUVE nodes from "XX_Preuve de conformité" columns where "XX_Concerné" is "X".
     Connects the PREUVE node to the Exigence, Métier, and Phase Projet.
     """
-    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery, owner: str) -> None:
         import re
 
         if "Exigences" in df.columns:
@@ -243,7 +243,7 @@ class LinkPreuveStep(IExtractionStep):
             metier_node = qry.find_node_by_exact_metadata("name", metier_name, NodeType.METIER)
             if not metier_node:
                 metier_node = Node(id=f"METIER-{metier_name}", type=NodeType.METIER, metadata={"name": metier_name})
-                cmd.add_node(metier_node)
+                cmd.add_node(metier_node, owner)
 
             for _, row in df.iterrows():
                 article_name = str(row.get("Article", "")).strip()
@@ -286,7 +286,7 @@ class LinkPreuveStep(IExtractionStep):
                                 type=NodeType.PREUVE,
                                 metadata={"description": content}
                             )
-                            cmd.add_node(preuve_node)
+                            cmd.add_node(preuve_node, owner)
 
                         # Connect Preuve to Exigence and Métier
                         # No Phase Projet edge because no phase was identified
@@ -312,7 +312,7 @@ class LinkPreuveStep(IExtractionStep):
                         phase_node = qry.find_node_by_exact_metadata("name", actual_phase_name, NodeType.PHASE_PROJET)
                         if not phase_node:
                             phase_node = Node(id=f"PHASE-{actual_phase_name}", type=NodeType.PHASE_PROJET, metadata={"name": actual_phase_name})
-                            cmd.add_node(phase_node)
+                            cmd.add_node(phase_node, owner)
 
                         # Create Preuve Node
                         preuve_id = generate_short_id("PRV", content)
@@ -321,7 +321,7 @@ class LinkPreuveStep(IExtractionStep):
                         preuve_node = qry.get_node(preuve_id)
                         if not preuve_node:
                             preuve_node = Node(id=preuve_id, type=NodeType.PREUVE, metadata={"description": content})
-                            cmd.add_node(preuve_node)
+                            cmd.add_node(preuve_node, owner)
 
                         # Connect Preuve to Exigence, Metier, and Phase
                         cmd.add_edge(Edge(preuve_node.id, exg_node.id))

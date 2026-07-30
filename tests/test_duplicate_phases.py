@@ -9,9 +9,12 @@ class MockCmd:
     def __init__(self):
         self.nodes = []
         self.edges = []
-    def add_node(self, node):
+    def add_node(self, node, owner='TestOwner'):
         if node.id not in [n.id for n in self.nodes]:
             self.nodes.append(node)
+    def add_log(self, log_entry: dict):
+        pass
+
     def add_edge(self, edge):
         self.edges.append(edge)
 
@@ -45,7 +48,7 @@ class TestPhaseDeduplication(unittest.TestCase):
             "Phase projet": ["Phase Contrat"]
         })
         step = LegacyExigenceExtractionStep()
-        step.execute(df, self.proj_node, self.cmd, self.qry)
+        step.execute(df, self.proj_node, self.cmd, self.qry, owner="TestOwner")
 
         phases = self.qry.find_nodes_by_type(NodeType.PHASE_PROJET)
         self.assertEqual(len(phases), 1)
@@ -58,7 +61,7 @@ class TestPhaseDeduplication(unittest.TestCase):
             "Phase Contrat": ["X"]
         })
         step = LinkPhaseProjetStep()
-        step.execute(df, self.proj_node, self.cmd, self.qry)
+        step.execute(df, self.proj_node, self.cmd, self.qry, owner="TestOwner")
 
         phases = self.qry.find_nodes_by_type(NodeType.PHASE_PROJET)
         self.assertEqual(len(phases), 1)
@@ -74,10 +77,10 @@ class TestPhaseDeduplication(unittest.TestCase):
         })
 
         step1 = LegacyExigenceExtractionStep()
-        step1.execute(df, self.proj_node, self.cmd, self.qry)
+        step1.execute(df, self.proj_node, self.cmd, self.qry, owner="TestOwner")
 
         step2 = LinkPhaseProjetStep()
-        step2.execute(df, self.proj_node, self.cmd, self.qry)
+        step2.execute(df, self.proj_node, self.cmd, self.qry, owner="TestOwner")
 
         phases = self.qry.find_nodes_by_type(NodeType.PHASE_PROJET)
         self.assertEqual(len(phases), 1)

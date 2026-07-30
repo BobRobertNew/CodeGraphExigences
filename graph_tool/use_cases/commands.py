@@ -1,4 +1,5 @@
 import warnings
+from datetime import datetime
 import pandas as pd
 from typing import Union, List, Callable
 from ..domain.entities import Node, Edge, NodeType
@@ -27,6 +28,8 @@ class CommandHandler:
         self,
         project_name: str,
         data_source: Union[str, pd.DataFrame],
+        owner: str,
+        author: str,
         loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
         steps: List[IExtractionStep] = None
     ):
@@ -54,22 +57,40 @@ class CommandHandler:
         else:
             warnings.warn("Column 'Etat de Conformité' not found. Proceeding without filtering.")
 
+        initial_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+
         # 1. Ensure Project Node exists
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
             proj_node = Node(id=f"PROJ-{project_name}", type=NodeType.PROJET, metadata={"name": project_name})
-            self.cmd.add_node(proj_node)
+            self.cmd.add_node(proj_node, owner)
 
         # 2. Run extraction steps
         if steps is None:
             steps = [LegacyExigenceExtractionStep()]
 
         for step in steps:
-            step.execute(df, proj_node, self.cmd, self.qry)
+            step.execute(df, proj_node, self.cmd, self.qry, owner)
+
+        final_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+        nodes_added = {t: final_node_counts[t] - initial_node_counts[t] for t in initial_node_counts if final_node_counts[t] > initial_node_counts[t]}
+
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "author": author,
+            "owner": owner,
+            "action": "add_project_exigences",
+            "reference": project_name,
+            "steps_used": [type(step).__name__ for step in steps],
+            "nodes_added": nodes_added
+        }
+        self.cmd.add_log(log_entry)
 
     def add_preuves(
         self,
         data_source: Union[str, pd.DataFrame],
+        owner: str,
+        author: str,
         loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
         steps: List[IExtractionStep] = None
     ):
@@ -86,18 +107,36 @@ class CommandHandler:
         if loader != load_and_clean_data:
             df = clean_dataframe(df)
 
+        initial_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+
         # Run extraction steps
         if steps is None:
             steps = [LinkPreuveStep()]
 
         # Pass None for proj_node as add_preuves does not take a project name
         for step in steps:
-            step.execute(df, None, self.cmd, self.qry)
+            step.execute(df, None, self.cmd, self.qry, owner)
+
+        final_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+        nodes_added = {t: final_node_counts[t] - initial_node_counts[t] for t in initial_node_counts if final_node_counts[t] > initial_node_counts[t]}
+
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "author": author,
+            "owner": owner,
+            "action": "add_preuves",
+            "reference": "Add preuves",
+            "steps_used": [type(step).__name__ for step in steps],
+            "nodes_added": nodes_added
+        }
+        self.cmd.add_log(log_entry)
 
     def add_rex(
         self,
         project_name: str,
         data_source: Union[str, pd.DataFrame],
+        owner: str,
+        author: str,
         loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
         exact_match_only: bool = False
     ):
@@ -118,6 +157,8 @@ class CommandHandler:
             ValueError: If the project is not found in the graph or if an Exigence cannot be matched,
                         or if neither 'REX Detail' nor 'Commentaire general' column is found.
         """
+        initial_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+
         df = loader(data_source)
 
         if "Commentaire général" in df.columns or "Commentaire general" in df.columns:
@@ -180,13 +221,25 @@ class CommandHandler:
                 metadata["description"] = rex_detail_text
 
             rex_node = Node(id=rex_id, type=NodeType.REX, metadata=metadata)
-            self.cmd.add_node(rex_node)
+            self.cmd.add_node(rex_node, owner)
 
             # Link REX to Project and Exigence
             self.cmd.add_edge(Edge(rex_node.id, proj_node.id))
             self.cmd.add_edge(Edge(rex_node.id, target_exg.id))
+        final_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+        nodes_added = {t: final_node_counts[t] - initial_node_counts[t] for t in initial_node_counts if final_node_counts[t] > initial_node_counts[t]}
 
-    def add_specification(self, spec_id: str, spec_name: str, data_source: Union[str, pd.DataFrame], exact_match_only: bool = False):
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "author": author,
+            "owner": owner,
+            "action": "add_rex",
+            "reference": project_name,
+            "nodes_added": nodes_added
+        }
+        self.cmd.add_log(log_entry)
+
+    def add_specification(self, spec_id: str, spec_name: str, data_source: Union[str, pd.DataFrame], owner: str, author: str, exact_match_only: bool = False):
         """
         Creates a Specification node and connects it to a list of Exigence nodes.
 
@@ -199,12 +252,13 @@ class CommandHandler:
             data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
             exact_match_only (bool): If True, strictly requires an exact match for Exigence, and skips the row if not found.
         """
+        initial_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
         df = load_and_clean_data(data_source)
 
         spec_node = self.qry.get_node(spec_id)
         if not spec_node:
             spec_node = Node(id=spec_id, type=NodeType.SPECIFICATION, metadata={"name": spec_name})
-            self.cmd.add_node(spec_node)
+            self.cmd.add_node(spec_node, owner)
 
         all_exigences = self.qry.get_nodes_by_type(NodeType.EXIGENCE)
         exigence_descriptions = {exg.metadata.get("description", ""): exg for exg in all_exigences}
@@ -234,14 +288,26 @@ class CommandHandler:
                 if not target_exg:
                     exg_id = generate_short_id("EXG", exigence_text)
                     target_exg = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
-                    self.cmd.add_node(target_exg)
+                    self.cmd.add_node(target_exg, owner)
                     # update dict and list for subsequent rows
                     exigence_descriptions[exigence_text] = target_exg
                     desc_list.append(exigence_text)
 
             self.cmd.add_edge(Edge(spec_node.id, target_exg.id))
+        final_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+        nodes_added = {t: final_node_counts[t] - initial_node_counts[t] for t in initial_node_counts if final_node_counts[t] > initial_node_counts[t]}
 
-    def add_contract(self, contract_id: str, contract_name: str, data_source: Union[str, pd.DataFrame]):
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "author": author,
+            "owner": owner,
+            "action": "add_specification",
+            "reference": spec_name,
+            "nodes_added": nodes_added
+        }
+        self.cmd.add_log(log_entry)
+
+    def add_contract(self, contract_id: str, contract_name: str, data_source: Union[str, pd.DataFrame], owner: str, author: str):
         """
         Creates a Contract node and connects it to Document nodes.
 
@@ -254,12 +320,13 @@ class CommandHandler:
             contract_name (str): The name of the contract.
             data_source (Union[str, pd.DataFrame]): Path to the data file or a pandas DataFrame.
         """
+        initial_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
         df = load_and_clean_data(data_source)
 
         contract_node = self.qry.get_node(contract_id)
         if not contract_node:
             contract_node = Node(id=contract_id, type=NodeType.CONTRAT, metadata={"name": contract_name})
-            self.cmd.add_node(contract_node)
+            self.cmd.add_node(contract_node, owner)
 
         for _, row in df.iterrows():
             doc_name = str(row.get("Document", "")).strip()
@@ -273,14 +340,29 @@ class CommandHandler:
             doc_node = self.qry.get_node(doc_id)
             if not doc_node:
                 doc_node = Node(id=doc_id, type=NodeType.DOCUMENT, metadata={"name": doc_name, "description": doc_desc})
-                self.cmd.add_node(doc_node)
+                self.cmd.add_node(doc_node, owner)
 
             self.cmd.add_edge(Edge(contract_node.id, doc_node.id))
+
+        final_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+        nodes_added = {t: final_node_counts[t] - initial_node_counts[t] for t in initial_node_counts if final_node_counts[t] > initial_node_counts[t]}
+
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "author": author,
+            "owner": owner,
+            "action": "add_contract",
+            "reference": contract_name,
+            "nodes_added": nodes_added
+        }
+        self.cmd.add_log(log_entry)
 
     def add_documents(
         self,
         project_name: str,
         df: pd.DataFrame,
+        owner: str,
+        author: str,
         doc_col: str = "Document",
         preuve_col: str = "Preuve"
     ):
@@ -293,12 +375,14 @@ class CommandHandler:
             doc_col (str): The column name for documents in the DataFrame.
             preuve_col (str): The column name for preuves in the DataFrame.
         """
+        initial_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+
         # Ensure Project Node exists
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
             proj_id = generate_short_id("PRJ", project_name)
             proj_node = Node(id=proj_id, type=NodeType.PROJET, metadata={"name": project_name})
-            self.cmd.add_node(proj_node)
+            self.cmd.add_node(proj_node, owner)
 
         for _, row in df.iterrows():
             doc_name = str(row.get(doc_col, "")).strip()
@@ -312,7 +396,7 @@ class CommandHandler:
             doc_node = self.qry.get_node(doc_id)
             if not doc_node:
                 doc_node = Node(id=doc_id, type=NodeType.DOCUMENT, metadata={"name": doc_name})
-                self.cmd.add_node(doc_node)
+                self.cmd.add_node(doc_node, owner)
 
             # Link Project -> Document
             self.cmd.add_edge(Edge(proj_node.id, doc_node.id))
@@ -322,7 +406,20 @@ class CommandHandler:
             preuve_node = self.qry.get_node(preuve_id)
             if not preuve_node:
                 preuve_node = Node(id=preuve_id, type=NodeType.PREUVE, metadata={"description": preuve_text})
-                self.cmd.add_node(preuve_node)
+                self.cmd.add_node(preuve_node, owner)
 
             # Link Document -> Preuve
             self.cmd.add_edge(Edge(doc_node.id, preuve_node.id))
+
+        final_node_counts = {t.name: len(self.qry.get_nodes_by_type(t)) for t in NodeType}
+        nodes_added = {t: final_node_counts[t] - initial_node_counts[t] for t in initial_node_counts if final_node_counts[t] > initial_node_counts[t]}
+
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "author": author,
+            "owner": owner,
+            "action": "add_documents",
+            "reference": project_name,
+            "nodes_added": nodes_added
+        }
+        self.cmd.add_log(log_entry)
