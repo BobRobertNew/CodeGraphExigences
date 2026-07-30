@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 from abc import ABC, abstractmethod
 from typing import List
@@ -220,7 +221,6 @@ class LinkPreuveStep(IExtractionStep):
     Connects the PREUVE node to the Exigence, Métier, and Phase Projet.
     """
     def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
-        import re
 
         if "Exigences" in df.columns:
             exigence_col = "Exigences"
@@ -328,6 +328,70 @@ class LinkPreuveStep(IExtractionStep):
                         cmd.add_edge(Edge(preuve_node.id, metier_node.id))
                         cmd.add_edge(Edge(preuve_node.id, phase_node.id))
 
+class LinkReferencePreuveGED(IExtractionStep):
+    """
+    Extracts DOCUMENT nodes from "XX_Reference GED PC" columns where "XX_Concerné" is "X".
+    Connects the DOCUMENT node to the Preuve and the project node.
+    """
+    def execute(self, df: pd.DataFrame, proj_node: Node, cmd: IGraphCommand, qry: IGraphQuery) -> None:
+        metier_cols = [col for col in df.columns if str(col).endswith("_Concerné")]
+
+        for col in metier_cols:
+            metier_name = str(col).replace("_Concerné", "").strip()
+            if not metier_name:
+                continue
+
+            doc_col = f"{metier_name}_Reference GED PC"
+            preuve_col = f"{metier_name}_Preuve de conformité"
+
+            if doc_col not in df.columns:
+                continue
+
+            for _, row in df.iterrows():
+                val = str(row.get(col, "")).strip().upper()
+                if "X" in val:
+                    doc_val = row.get(doc_col, "")
+                    doc_text = "" if pd.isna(doc_val) else str(doc_val).strip()
+                    if doc_text.lower() == "nan": doc_text = ""
+                    if not doc_text:
+                        continue
+
+                    # Create DOCUMENT node
+                    doc_id = generate_short_id("DOC", doc_text)
+                    doc_node = qry.get_node(doc_id)
+                    if not doc_node:
+                        doc_node = Node(id=doc_id, type=NodeType.DOCUMENT, metadata={"name": doc_text})
+                        cmd.add_node(doc_node)
+
+                    # Link DOCUMENT -> PROJET
+                    cmd.add_edge(Edge(doc_node.id, proj_node.id))
+
+                    # Connect DOCUMENT to PREUVE
+                    if preuve_col in df.columns:
+                        preuve_text = str(row.get(preuve_col, "")).strip()
+                        if preuve_text:
+                            # Replicate the splitting logic to find the exact Preuve nodes created by LinkPreuveStep
+                            pattern = r"(?i)Phase\s+(Conception|Exploitation|Commun|[ÉE]tude|Contrat|Réalisation)\s*:"
+                            matches = list(re.finditer(pattern, preuve_text))
+
+                            if not matches:
+                                content = preuve_text.strip()
+                                if content:
+                                    preuve_id = generate_short_id("PRV", content)
+                                    preuve_node = qry.get_node(preuve_id)
+                                    if preuve_node:
+                                        cmd.add_edge(Edge(doc_node.id, preuve_node.id))
+                            else:
+                                for i, match in enumerate(matches):
+                                    start_idx = match.end()
+                                    end_idx = matches[i+1].start() if i+1 < len(matches) else len(preuve_text)
+                                    content = preuve_text[start_idx:end_idx].strip()
+                                    if content:
+                                        preuve_id = generate_short_id("PRV", content)
+                                        preuve_node = qry.get_node(preuve_id)
+                                        if preuve_node:
+                                            cmd.add_edge(Edge(doc_node.id, preuve_node.id))
+                                            
 class LinkArticleToDomainStep(IExtractionStep):
     """
     Connects every ARTICLE node found in the DataFrame

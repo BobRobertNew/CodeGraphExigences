@@ -173,5 +173,54 @@ class TestExtractors(unittest.TestCase):
         phase_etude = [p for p in phases if p.metadata["name"] == "Etude"][0]
         self.assertIn(phase_etude.id, connected_ids)
 
+
+    def test_link_reference_preuve_ged(self):
+        proj_node = Node(id="PROJ-Test", type=NodeType.PROJET, metadata={"name": "Test Project"})
+        self.cmd_handler.cmd.add_node(proj_node)
+
+        # Setup Exigence
+        exigence_text = "Test Exigence DOC"
+        from graph_tool.utils.text_utils import generate_short_id
+        exg_id = generate_short_id("EXG", exigence_text)
+        exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
+        self.cmd_handler.cmd.add_node(exg_node)
+
+        data = {
+            "Exigences": [exigence_text],
+            "MétierA_Concerné": ["X"],
+            "MétierA_Preuve de conformité": ["Phase Etude: txt1. Phase Conception: txt2"],
+            "MétierA_Reference GED PC": ["DOC-XYZ-123"]
+        }
+        df = pd.DataFrame(data)
+
+        # Execute LinkPreuveStep to setup Preuve nodes
+        from graph_tool.use_cases.extractors import LinkPreuveStep, LinkReferencePreuveGED
+        step1 = LinkPreuveStep()
+        step1.execute(df, proj_node, self.cmd_handler.cmd, self.cmd_handler.qry)
+
+        # Execute LinkReferencePreuveGED
+        step2 = LinkReferencePreuveGED()
+        step2.execute(df, proj_node, self.cmd_handler.cmd, self.cmd_handler.qry)
+
+        # Assert DOCUMENT node creation
+        docs = self.repo.get_nodes_by_type(NodeType.DOCUMENT)
+        self.assertEqual(len(docs), 1)
+        doc = docs[0]
+        self.assertEqual(doc.metadata["name"], "DOC-XYZ-123")
+
+        edges = self.repo.get_all_edges()
+
+        # Verify DOCUMENT -> PROJET link
+        proj_links = [e for e in edges if (e.source_id == doc.id and e.target_id == proj_node.id) or (e.target_id == doc.id and e.source_id == proj_node.id)]
+        self.assertEqual(len(proj_links), 1)
+
+        # Verify DOCUMENT -> PREUVE links
+        preuves = self.repo.get_nodes_by_type(NodeType.PREUVE)
+        self.assertEqual(len(preuves), 2)
+
+        preuve_links = [e for e in edges if (e.source_id == doc.id and e.target_id in [p.id for p in preuves]) or (e.target_id == doc.id and e.source_id in [p.id for p in preuves])]
+        self.assertEqual(len(preuve_links), 2)
+
+
 if __name__ == '__main__':
     unittest.main()
