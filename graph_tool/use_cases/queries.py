@@ -4,6 +4,7 @@ from ..domain.entities import Node, NodeType
 from ..domain.ports import IGraphQuery
 from ..utils.text_utils import generate_short_id, find_best_match, find_best_match_with_score
 from ..infrastructure.data_loader import load_and_clean_data
+from tqdm import tqdm
 
 class QueryHandler:
     """
@@ -360,7 +361,8 @@ class QueryHandler:
         for col in df_clean.columns:
             updates[col] = df_clean[col].astype(str).tolist()
 
-        for i, (idx, row) in enumerate(df_clean.iterrows()):
+        #for i, (idx, row) in enumerate(df_clean.iterrows()):
+        for i, (idx, row) in enumerate(tqdm(df_clean.iterrows(), total=len(df_clean), desc="Processing requirements")):
 
             article_name = str(row.get("Article", "")).strip()
             sous_article_name = str(row.get("Sous_Article", "")).strip()
@@ -852,3 +854,129 @@ class QueryHandler:
                     result[name] = [n.metadata.get("name", "") for n in neighbors]
 
         return result
+
+    def get_preuves_phases_metiers_articles_for_exigences(
+        self,
+        project_name: str
+    ) -> pd.DataFrame:
+        """
+        Récupère pour un projet l'ensemble des combinaisons :
+        Preuve / Article / Domaine / Phase projet / Métier.
+
+        Parcours :
+        Projet -> Exigence
+        Exigence -> Preuve
+        Exigence -> Sous-Article -> Article -> Domaine
+        Preuve -> Métier
+        Preuve -> Phase Projet
+
+        Returns:
+            pd.DataFrame avec les colonnes :
+            Preuves, Article, Domaine, Phase, Métier
+        """
+        columns = ["Preuves", "Article", "Domaine", "Phase", "Métier"]
+
+        proj_node = self.qry.find_node_by_exact_metadata(
+            "name",
+            project_name,
+            NodeType.PROJET
+        )
+
+        if not proj_node:
+            return pd.DataFrame(columns=columns)
+
+        results = []
+
+        exigences = self.qry.get_neighbors(
+            proj_node.id,
+            NodeType.EXIGENCE
+        )
+
+        for exg in exigences:
+
+            # ---------- Articles et domaines ----------
+            articles_data = []
+
+            sous_articles = self.qry.get_neighbors(
+                exg.id,
+                NodeType.SOUS_ARTICLE
+            )
+
+            for sous_article in sous_articles:
+                articles = self.qry.get_neighbors(
+                    sous_article.id,
+                    NodeType.ARTICLE
+                )
+
+                for article in articles:
+                    article_name = article.metadata.get("name", "")
+
+                    domains = self.qry.get_neighbors(
+                        article.id,
+                        NodeType.DOMAINE
+                    )
+
+                    # Un article doit être lié à un seul domaine
+                    domain_name = (
+                        domains[0].metadata.get("name", "")
+                        if domains
+                        else ""
+                    )
+
+                    articles_data.append(
+                        (article_name, domain_name)
+                    )
+
+            # Suppression des doublons Article / Domaine
+            articles_data = list(set(articles_data))
+
+            if not articles_data:
+                articles_data = [("", "")]
+
+            # ---------- Preuves ----------
+            preuves = self.qry.get_neighbors(
+                exg.id,
+                NodeType.PREUVE
+            )
+
+            for preuve in preuves:
+                preuve_text = (
+                    preuve.metadata.get("description")
+                    or preuve.metadata.get("name")
+                    or ""
+                )
+
+                preuve_neighbors = self.qry.get_neighbors(preuve.id)
+
+                metiers = list({
+                    node.metadata.get("name", "")
+                    for node in preuve_neighbors
+                    if node.type == NodeType.METIER
+                    and node.metadata.get("name")
+                })
+
+                phases = list({
+                    node.metadata.get("name", "")
+                    for node in preuve_neighbors
+                    if node.type == NodeType.PHASE_PROJET
+                    and node.metadata.get("name")
+                })
+
+                if not metiers:
+                    metiers = [""]
+
+                if not phases:
+                    phases = [""]
+
+                for article_name, domain_name in articles_data:
+                    for phase in phases:
+                        for metier in metiers:
+                            results.append({
+                                "Preuves": preuve_text,
+                                "Article": article_name,
+                                "Domaine": domain_name,
+                                "Phase": phase,
+                                "Métier": metier
+                            })
+
+        return pd.DataFrame(results, columns=columns).drop_duplicates()

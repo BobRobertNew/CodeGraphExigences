@@ -391,3 +391,63 @@ class LinkReferencePreuveGED(IExtractionStep):
                                         preuve_node = qry.get_node(preuve_id)
                                         if preuve_node:
                                             cmd.add_edge(Edge(doc_node.id, preuve_node.id))
+                                            
+class LinkArticleToDomainStep(IExtractionStep):
+    """
+    Connects every ARTICLE node found in the DataFrame
+    to a configurable DOMAINE node.
+    """
+
+    def __init__(self, domain_name: str):
+        self.domain_name = domain_name.strip()
+
+        if not self.domain_name:
+            raise ValueError("domain_name cannot be empty")
+
+    def execute(
+        self,
+        df: pd.DataFrame,
+        proj_node: Node,
+        cmd: IGraphCommand,
+        qry: IGraphQuery
+    ) -> None:
+
+        if "Article" not in df.columns:
+            return
+
+        # Retrieve or create the domain
+        domain_node = qry.find_node_by_exact_metadata(
+            "name",
+            self.domain_name,
+            NodeType.DOMAINE
+        )
+
+        if not domain_node:
+            domain_node = Node(
+                id=generate_short_id("DOM", self.domain_name),
+                type=NodeType.DOMAINE,
+                metadata={"name": self.domain_name}
+            )
+            cmd.add_node(domain_node)
+
+        # Process each article only once
+        article_names = (
+            df["Article"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .unique()
+        )
+
+        for article_name in article_names:
+            if not article_name or article_name.lower() == "nan":
+                continue
+
+            article_id = generate_short_id("ART", article_name)
+            article_node = qry.get_node(article_id)
+
+            # Articles are created by CreateExigenceAndArticlesStep
+            if article_node and article_node.type == NodeType.ARTICLE:
+                cmd.add_edge(
+                    Edge(article_node.id, domain_node.id)
+                )
