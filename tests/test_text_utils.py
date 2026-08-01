@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -279,7 +279,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +287,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
@@ -322,6 +322,42 @@ class TestTextUtils(unittest.TestCase):
         match, score = find_best_match_with_score("apple", choices, threshold=105)
         self.assertIsNone(match)
         self.assertIsNone(score)
+
+    def test_find_best_match_empty_string_match_threshold_zero(self):
+        # Empty query gives None initially, but if we query non-empty and choice is empty string:
+        # Rapidfuzz gives a 0 score for completely different things or empty strings vs non-empty
+        choices = ["", "apple"]
+        # 'a' against '' usually yields 0 score
+        self.assertEqual(find_best_match("z", choices, threshold=0), "")
+
+    def test_find_best_match_query_is_substring(self):
+        choices = ["apple pie", "banana"]
+        # "apple" is a substring of "apple pie", should yield a high score
+        self.assertEqual(find_best_match("apple", choices, threshold=90), "apple pie")
+
+    def test_find_best_match_choice_is_substring(self):
+        choices = ["apple", "banana"]
+        # "apple" is a substring of the query
+        self.assertEqual(find_best_match("apple pie", choices, threshold=90), "apple")
+
+    def test_find_best_match_mixed_case_and_punctuation(self):
+        choices = ["apple pie?", "Banana!"]
+        # If threshold is extremely high, this shouldn't match due to case/punctuation differences
+        self.assertIsNone(find_best_match("Apple_Pie!", choices, threshold=100))
+        # But it should match at a lower threshold
+        self.assertEqual(find_best_match("Apple_Pie!", choices, threshold=50), "apple pie?")
+
+    def test_find_best_match_with_score_query_is_substring(self):
+        choices = ["apple pie", "banana"]
+        match, score = find_best_match_with_score("apple", choices, threshold=90)
+        self.assertEqual(match, "apple pie")
+        self.assertGreaterEqual(score, 90)
+
+    def test_find_best_match_with_score_choice_is_substring(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("apple pie", choices, threshold=90)
+        self.assertEqual(match, "apple")
+        self.assertGreaterEqual(score, 90)
 
 
 if __name__ == "__main__":
