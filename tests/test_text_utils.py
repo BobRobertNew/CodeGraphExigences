@@ -323,6 +323,26 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_fuzzy_edge_cases(self):
+        # Empty string edge cases
+        self.assertIsNone(find_best_match("", ["apple", "banana"]))
+        self.assertIsNone(find_best_match("apple", []))
+        self.assertIsNone(find_best_match("apple", ["", ""]))
+        # Exact tie breaking edge cases
+        self.assertEqual(find_best_match("apple", ["apple", "apple"]), "apple")
+        # Extreme whitespaces
+        self.assertEqual(find_best_match("   apple   ", ["apple"]), "apple")
+        # Substring/prefix matching
+        self.assertEqual(find_best_match("app", ["apple", "banana"], threshold=50), "apple")
+
+    def test_find_best_match_with_score_fuzzy_edge_cases(self):
+        match, score = find_best_match_with_score("", ["apple"])
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+        match, score = find_best_match_with_score("apple", [])
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
 
 if __name__ == "__main__":
     unittest.main()
