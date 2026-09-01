@@ -856,6 +856,7 @@ class QueryHandler:
         return result
         
     def consolider_preuves(
+        self,
         df: pd.DataFrame,
         separateur: str = " ; "
     ) -> pd.DataFrame:
