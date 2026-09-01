@@ -854,7 +854,62 @@ class QueryHandler:
                     result[name] = [n.metadata.get("name", "") for n in neighbors]
 
         return result
+        
+    def consolider_preuves(
+        df: pd.DataFrame,
+        separateur: str = " | "
+    ) -> pd.DataFrame:
 
+        """
+        Consolide les preuves par Article, Phase, Métier et Domaine.
+
+        Args:
+            df:
+                DataFrame contenant les colonnes :
+                Preuves, Article, Domaine, Phase, Métier.
+
+            separateur:
+                Séparateur utilisé pour concaténer les preuves.
+
+        Returns:
+            DataFrame contenant les colonnes :
+            Nombre de preuves, Preuves, Article, Phase, Métier, Domaine.
+        """
+        
+        colonnes_groupement = ["Article", "Phase", "Métier", "Domaine"]
+        colonnes_requises = ["Preuves", *colonnes_groupement]
+
+        manquantes = set(colonnes_requises) - set(df.columns)
+        if manquantes:
+            raise ValueError(f"Colonnes manquantes : {sorted(manquantes)}")
+
+        # Nettoyage unique des preuves
+        preuves = df["Preuves"].astype("string").str.strip().replace("", pd.NA)
+
+        resultat = (
+            df.assign(Preuves=preuves)
+            .groupby(colonnes_groupement, dropna=False, sort=False)["Preuves"]
+            .agg(
+                **{
+                    "Nombre de preuves": "nunique",
+                    "Preuves": lambda valeurs: separateur.join(
+                        valeurs.dropna().drop_duplicates()
+                    ),
+                }
+            )
+            .reset_index()
+        )
+
+        return resultat[
+            [
+                "Nombre de preuves",
+                "Preuves",
+                "Article",
+                "Phase",
+                "Métier",
+                "Domaine",
+            ]
+        ]
     def get_preuves_phases_metiers_articles_for_exigences(
         self,
         project_name: str
