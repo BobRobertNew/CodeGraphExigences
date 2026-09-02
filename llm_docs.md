@@ -28,6 +28,17 @@ Most questions require fetching and analyzing data from the graph. The `graph_to
         similar = query_handler.find_most_similar_projects("Project Alpha", ["Must be secure", "Fast response time"], top_k=2)
         ```
 
+*   **`get_preuves_phases_metiers_articles_for_exigences`**
+    *   **Description**: Retrieves detailed graph information for a set of exigences, including proofs, phases, trades (métiers), and articles.
+    *   **Parameters**:
+        *   `data_source` (`Union[str, pd.DataFrame]`): Path to the Excel/CSV file or a pandas DataFrame.
+        *   `exact_match_only` (`bool`, optional, default=False): If True, skips fuzzy matching.
+    *   **Returns**: `pd.DataFrame` (DataFrame containing 'Exigence', 'Phase(s)', 'Métier(s)', 'Preuve(s) de conformité', 'Article(s)', 'Sous-article(s)', and 'À Enjeux').
+    *   **Example**:
+        ```python
+        detailed_df = query_handler.get_preuves_phases_metiers_articles_for_exigences("exigences.xlsx")
+        ```
+
 *   **`get_useful_rex`**
     *   **Description**: Extracts Return on Experience (REX) node IDs related to given requirements from up to 3 similar projects.
     *   **Parameters**:
@@ -98,11 +109,11 @@ Most questions require fetching and analyzing data from the graph. The `graph_to
 ### Querying Initialization Boilerplate
 
 ```python
-from graph_tool.infrastructure.networkx_adapter import NetworkXAdapter
+from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepository
 from graph_tool.use_cases.queries import QueryHandler
 
 # Initialize the query adapter and handler
-query_adapter = NetworkXAdapter() # Typically, this adapter might already hold the loaded graph
+query_adapter = NetworkXGraphRepository() # Typically, this adapter might already hold the loaded graph
 query_handler = QueryHandler(query_adapter)
 ```
 
@@ -160,10 +171,10 @@ To add data to the graph, use `graph_tool.use_cases.commands.CommandHandler`.
 ### Command Initialization Boilerplate
 
 ```python
-from graph_tool.infrastructure.networkx_adapter import NetworkXAdapter
+from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepository
 from graph_tool.use_cases.commands import CommandHandler
 
-command_adapter = NetworkXAdapter() # Typically shares the same underlying graph instance as query adapter
+command_adapter = NetworkXGraphRepository() # Typically shares the same underlying graph instance as query adapter
 query_adapter = command_adapter
 cmd_handler = CommandHandler(command_adapter, query_adapter)
 ```

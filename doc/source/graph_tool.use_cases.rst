@@ -1,6 +1,14 @@
 graph\_tool.use\_cases package
 ==============================
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   graph_tool.use_cases.renderers
+
 Submodules
 ----------
 
@@ -16,6 +24,14 @@ graph\_tool.use\_cases.enhancements module
 ------------------------------------------
 
 .. automodule:: graph_tool.use_cases.enhancements
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+graph\_tool.use\_cases.extractors module
+----------------------------------------
+
+.. automodule:: graph_tool.use_cases.extractors
    :members:
    :show-inheritance:
    :undoc-members:
