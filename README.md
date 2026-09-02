@@ -14,12 +14,35 @@ This tool strictly adheres to **SOLID** principles, specifically:
 - `graph_tool/use_cases/`: Contains `CommandHandler`, `QueryHandler`, and `GraphEnhancements`.
 - `graph_tool/utils/`: Contains helpers for string hashing and fuzzy text matching.
 
+
+## Architecture Philosophy
+
+This tool uses a strict SOLID-compliant architecture designed around the principles of Dependency Inversion and CQRS (Command Query Responsibility Segregation).
+
+*   **Domain**: At its core, the tool uses abstract `Node` and `Edge` definitions, completely agnostic of any specific database engine.
+*   **Infrastructure**: Houses the actual persistence logic, currently implemented via `NetworkXGraphRepository`.
+*   **Use Cases**: Divided cleanly into `commands` (actions that modify the graph, like loading Exigences or Contracts) and `queries` (actions that extract information, like finding similar projects).
+*   **Decoupled Extraction**: Data ingestion is handled by an `IExtractionStep` interface. This allows developers to easily hot-swap parsing logic (e.g., `CreateExigenceAndArticlesStep`, `LinkMetierStep`) depending on the input data format, without touching the core command logic.
+*   **Decoupled Rendering**: Graph visualizations are generated using a Strategy Pattern via the `GraphRenderer` interface. This means the core logic doesn't care if you are rendering with PyVis or Datashader, it just provides an `IGraphQuery` adapter to the renderer.
+
+### Understanding `main.py`
+
+The `main.py` file serves as the definitive, executable demonstration of the tool's capabilities. It acts as the composition root where all dependencies are wired together:
+
+1.  **Initialization**: It spins up the `NetworkXGraphRepository` and injects it into the `CommandHandler`, `QueryHandler`, and `GraphEnhancements` services.
+2.  **Data Loading**: It demonstrates how to seed the graph with data by processing multiple Excel files (`project_A.xlsx`, etc.) using specific extraction pipelines.
+3.  **Queries in Action**: The script runs a suite of complex queries (e.g., finding identical exigences across different projects, filtering by specific Trades/Métiers, fetching linked REX notes) showcasing the power of the `QueryHandler`.
+4.  **Enhancements & Visuals**: It executes integrity checks, computes Venn diagrams for overlapping requirements, UpSet plots, and exports a final navigable HTML graph.
+5.  **Persistence**: Finally, it demonstrates how to save the graph state using `StorageHandler` for later use.
+
+Reviewing `main.py` is the best starting point to understand how to interact with the API programmatically.
+
 ## Requirements
 
 Install the necessary dependencies:
 
 ```bash
-pip install networkx pandas thefuzz pyvis openpyxl upsetplot matplotlib
+pip install networkx pandas rapidfuzz tqdm streamlit scipy datashader holoviews bokeh pytest pytest-cov matplotlib-venn sphinx sphinx-rtd-theme pyvis openpyxl upsetplot matplotlib
 ```
 
 ## Usage
@@ -32,6 +55,8 @@ from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 from graph_tool.use_cases.enhancements import GraphEnhancements
 from graph_tool.use_cases.storage import StorageHandler
+from graph_tool.use_cases.renderers import PyVisRenderer
+from graph_tool.use_cases.extractors import CreateExigenceAndArticlesStep, LinkMetierStep, LinkPhaseProjetStep
 
 repo = NetworkXGraphRepository()
 commands = CommandHandler(repo, repo)
@@ -44,8 +69,8 @@ storage = StorageHandler(repo)
 
 The tool accepts Pandas DataFrames or paths to Excel (`.xlsx`) / `.csv` files.
 
-- `commands.add_project_exigences(project_name, df_or_filepath)`
-- `commands.add_rex(project_name, df_or_filepath)`
+- `commands.add_project_exigences(project_name, df_or_filepath, steps=[CreateExigenceAndArticlesStep(), LinkMetierStep(), LinkPhaseProjetStep()])`
+- `commands.add_rex(project_name, df_or_filepath, exact_match_only=True)`
 - `commands.add_specification(spec_id, spec_name, df_or_filepath)`
 - `commands.add_contract(contract_id, contract_name, df_or_filepath)`
 
@@ -71,10 +96,25 @@ storage.load_graph("my_graph.graphml", format="graphml")
 
 ### 5. Enhancements
 
-- **Graph Visualization:** Export your graph to an interactive HTML file.
+- **Graph Visualization:** Export your graph to an interactive HTML file using different renderers (e.g., PyVis, Datashader).
   ```python
-  enhancements.visualize_graph("output.html")
+  enhancements.visualize_graph("output.html", renderer=PyVisRenderer())
   ```
+- **Venn Diagrams:** Generate HTML-based Venn diagrams for overlapping node sets.
+  ```python
+  enhancements.generate_venn_diagram_html(...)
+  ```
+- **UpSet Plots:** Generate UpSet plots for complex intersections.
+  ```python
+  enhancements.generate_upset_plot(...)
+  ```
+
+### 6. User Interface
+
+You can launch the Streamlit-based web interface to interact with the graph visually:
+```bash
+streamlit run graph_tool/ui/app.py
+```
 - **Integrity Checker:** Find dangling nodes (e.g., Exigences without a Preuve).
   ```python
   issues = enhancements.check_graph_integrity()
@@ -84,5 +124,5 @@ storage.load_graph("my_graph.graphml", format="graphml")
 
 Run the test suite via standard unittest:
 ```bash
-python3 -m unittest discover tests
+PYTHONPATH=. python3 -m pytest tests/
 ```
