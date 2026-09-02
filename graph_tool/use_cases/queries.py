@@ -917,7 +917,7 @@ class QueryHandler:
     ) -> pd.DataFrame:
         """
         Récupère pour un projet l'ensemble des combinaisons :
-        Preuve / Article / Domaine / Phase projet / Métier.
+        Preuve / Article / Domaine / Phase projet / Métier / À Enjeux.
 
         Parcours :
         Projet -> Exigence
@@ -928,9 +928,9 @@ class QueryHandler:
 
         Returns:
             pd.DataFrame avec les colonnes :
-            Preuves, Article, Domaine, Phase, Métier
+            Preuves, Article, Domaine, Phase, Métier, À Enjeux
         """
-        columns = ["Preuves", "Article", "Domaine", "Phase", "Métier"]
+        columns = ["Preuves", "Article", "Domaine", "Phase", "Métier", "À Enjeux"]
 
         proj_node = self.qry.find_node_by_exact_metadata(
             "name",
@@ -1024,6 +1024,8 @@ class QueryHandler:
                 if not phases:
                     phases = [""]
 
+                a_enjeux_val = True if exg.metadata.get("À Enjeux") is True else ""
+
                 for article_name, domain_name in articles_data:
                     for phase in phases:
                         for metier in metiers:
@@ -1032,7 +1034,8 @@ class QueryHandler:
                                 "Article": article_name,
                                 "Domaine": domain_name,
                                 "Phase": phase,
-                                "Métier": metier
+                                "Métier": metier,
+                                "À Enjeux": a_enjeux_val
                             })
 
         return pd.DataFrame(results, columns=columns).drop_duplicates()

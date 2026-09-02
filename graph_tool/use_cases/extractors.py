@@ -43,12 +43,20 @@ class LegacyExigenceExtractionStep(IExtractionStep):
             article_name = str(row.get("Article", "")).strip()
             sous_article_name = str(row.get("Sous_Article", "")).strip()
 
+            # Check for "textes à enjeux" metadata
+            textes_a_enjeux_val = str(row.get("textes à enjeux", "")).strip().lower()
+            metadata_dict = {"description": exigence_text}
+            if textes_a_enjeux_val == "x":
+                metadata_dict["À Enjeux"] = True
+
             # Exigence Node
             exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
             exg_node = qry.get_node(exg_id)
             if not exg_node:
-                exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
+                exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata=metadata_dict)
                 cmd.add_node(exg_node)
+            elif textes_a_enjeux_val == "x":
+                exg_node.metadata["À Enjeux"] = True
 
             # Link Project -> Exigence
             cmd.add_edge(Edge(proj_node.id, exg_node.id))
@@ -107,12 +115,20 @@ class CreateExigenceAndArticlesStep(IExtractionStep):
             if not exigence_text:
                 continue
 
+            # Check for "textes à enjeux" metadata
+            textes_a_enjeux_val = str(row.get("textes à enjeux", "")).strip().lower()
+            metadata_dict = {"description": exigence_text}
+            if textes_a_enjeux_val == "x":
+                metadata_dict["À Enjeux"] = True
+
             # Exigence Node
             exg_id = generate_short_id("EXG", article_name + sous_article_name + exigence_text)
             exg_node = qry.get_node(exg_id)
             if not exg_node:
-                exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata={"description": exigence_text})
+                exg_node = Node(id=exg_id, type=NodeType.EXIGENCE, metadata=metadata_dict)
                 cmd.add_node(exg_node)
+            elif textes_a_enjeux_val == "x":
+                exg_node.metadata["À Enjeux"] = True
 
             # Link Project -> Exigence
             cmd.add_edge(Edge(proj_node.id, exg_node.id))
