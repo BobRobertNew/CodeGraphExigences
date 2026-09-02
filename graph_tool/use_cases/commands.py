@@ -28,7 +28,9 @@ class CommandHandler:
         project_name: str,
         data_source: Union[str, pd.DataFrame],
         loader: Callable[[Union[str, pd.DataFrame]], pd.DataFrame] = load_and_clean_data,
-        steps: List[IExtractionStep] = None
+        steps: List[IExtractionStep] = None,
+        owner: str = "Streamlit User",
+        author: str = "Streamlit User"
     ):
         """
         Adds project requirements (exigences) to the graph.
@@ -57,7 +59,7 @@ class CommandHandler:
         # 1. Ensure Project Node exists
         proj_node = self.qry.find_node_by_exact_metadata("name", project_name, NodeType.PROJET)
         if not proj_node:
-            proj_node = Node(id=f"PROJ-{project_name}", type=NodeType.PROJET, metadata={"name": project_name})
+            proj_node = Node(id=f"PROJ-{project_name}", type=NodeType.PROJET, metadata={"name": project_name, "owner": owner, "author": author})
             self.cmd.add_node(proj_node)
 
         # 2. Run extraction steps
