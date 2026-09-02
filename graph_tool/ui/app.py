@@ -57,13 +57,18 @@ def process_preuves_extraction(uploaded_files):
             project_name = extract_project_name(uploaded_file.name)
             st.write(f"Traitement du projet: **{project_name}** depuis `{uploaded_file.name}`")
 
-                        try:
+            try:
                 # Note pour le futur: Pour conserver le graphe entre les différentes actions (ex: bouton 2),
                 # on pourrait stocker l'instance `repo` dans st.session_state (ex: st.session_state.repo = repo)
                 # et vérifier si elle existe au début de process_preuves_extraction au lieu d'en recréer une.
+                from graph_tool.infrastructure.data_loader import load_and_clean_data
+                def safe_loader(source):
+                    return load_and_clean_data(source, safe_base_dir=temp_dir)
+
                 cmd.add_project_exigences(
                     project_name=project_name,
                     data_source=file_path,
+                    loader=safe_loader,
                     owner="Streamlit User",
                     author="Streamlit User"
                 )
