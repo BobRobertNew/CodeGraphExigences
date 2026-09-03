@@ -323,6 +323,21 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_threshold_zero(self):
+        choices = ["xyz", "123"]
+        # With threshold 0, it should return the best match even if it's a terrible match
+        self.assertIsNotNone(find_best_match("apple", choices, threshold=0))
+
+    def test_find_best_match_very_large_choices(self):
+        choices = [f"choice_{i}" for i in range(1000)] + ["target_match"]
+        self.assertEqual(find_best_match("target_match", choices), "target_match")
+
+    def test_find_best_match_with_score_threshold_zero(self):
+        choices = ["xyz", "123"]
+        match, score = find_best_match_with_score("apple", choices, threshold=0)
+        self.assertIsNotNone(match)
+        self.assertIsNotNone(score)
+
 
 if __name__ == "__main__":
     unittest.main()
