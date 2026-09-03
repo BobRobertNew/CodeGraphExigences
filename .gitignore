@@ -8,3 +8,4 @@ doc/build/
 *.graphml
 *.html
 *.png
+tmp/

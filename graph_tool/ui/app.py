@@ -48,7 +48,10 @@ def process_preuves_extraction(uploaded_files):
 
     all_results = []
 
-    with tempfile.TemporaryDirectory() as temp_dir:
+    # Create temp dir if it does not exist (fallback if it was deleted)
+    os.makedirs("tmp", exist_ok=True)
+
+    with tempfile.TemporaryDirectory(dir="tmp") as temp_dir:
         for uploaded_file in uploaded_files:
             file_path = os.path.join(temp_dir, uploaded_file.name)
             with open(file_path, "wb") as f:

@@ -27,8 +27,8 @@ def load_data(source: Union[str, pd.DataFrame], safe_base_dir: str = None, **kwa
     if isinstance(source, pd.DataFrame):
         return source.copy()
     elif isinstance(source, str):
-        base_dir = os.path.abspath(safe_base_dir) if safe_base_dir else os.path.abspath(os.getcwd())
-        file_path = os.path.abspath(source)
+        base_dir = os.path.realpath(safe_base_dir) if safe_base_dir else os.path.realpath(os.getcwd())
+        file_path = os.path.realpath(source)
         if os.path.commonpath([base_dir, file_path]) != base_dir:
             raise SecurityError(f"Path traversal detected: Attempted to access a file outside of the allowed base directory: {base_dir}")
 
