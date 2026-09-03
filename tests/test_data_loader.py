@@ -39,5 +39,34 @@ class TestDataLoader(unittest.TestCase):
         self.assertEqual(df_output.iloc[0, 1], "Smith")
         self.assertEqual(df_output.iloc[0, 2], "Los Angeles")
 
+    def test_load_data_with_safe_base_dir(self):
+        import tempfile
+        import os
+        from graph_tool.infrastructure.data_loader import SecurityError
+
+        # Create a temporary directory structure to simulate the error condition
+        with tempfile.TemporaryDirectory() as root_temp_dir:
+            # Create a base directory
+            base_dir = os.path.join(root_temp_dir, "base")
+            os.makedirs(base_dir)
+
+            # Create a dummy excel file in base_dir
+            df = pd.DataFrame({"A": [1, 2]})
+            file_path = os.path.join(base_dir, "test_file.xlsx")
+            df.to_excel(file_path, index=False)
+
+            # Verify that loading it with safe_base_dir works
+            loaded_df = load_data(file_path, safe_base_dir=base_dir)
+            self.assertEqual(loaded_df.shape, (2, 1))
+
+            # Try to load a file from outside base_dir
+            outside_dir = os.path.join(root_temp_dir, "outside")
+            os.makedirs(outside_dir)
+            outside_file = os.path.join(outside_dir, "outside.xlsx")
+            df.to_excel(outside_file, index=False)
+
+            with self.assertRaises(SecurityError):
+                load_data(outside_file, safe_base_dir=base_dir)
+
 if __name__ == "__main__":
     unittest.main()
