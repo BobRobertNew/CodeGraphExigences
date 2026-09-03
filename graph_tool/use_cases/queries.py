@@ -911,7 +911,7 @@ class QueryHandler:
                 "Domaine",
             ]
         ]
-    def get_preuves_phases_metiers_articles_for_exigences(
+    def get_preuves_phases_metiers_articles_for_exigencesOLD(
         self,
         project_name: str
     ) -> pd.DataFrame:
@@ -1023,6 +1023,162 @@ class QueryHandler:
 
                 if not phases:
                     phases = [""]
+
+                a_enjeux_val = True if exg.metadata.get("À Enjeux") is True else ""
+
+                for article_name, domain_name in articles_data:
+                    for phase in phases:
+                        for metier in metiers:
+                            results.append({
+                                "Preuves": preuve_text,
+                                "Article": article_name,
+                                "Domaine": domain_name,
+                                "Phase": phase,
+                                "Métier": metier,
+                                "À Enjeux": a_enjeux_val
+                            })
+
+        return pd.DataFrame(results, columns=columns).drop_duplicates()
+
+    def get_preuves_phases_metiers_articles_for_exigences(
+        self,
+        project_name: str
+    ) -> pd.DataFrame:
+        """
+        Récupère pour un projet l'ensemble des combinaisons :
+        Preuve / Article / Domaine / Phase projet / Métier / À Enjeux.
+
+        Parcours :
+        Projet -> Exigence
+        Exigence -> Preuve
+        Exigence -> Sous-Article -> Article -> Domaine
+        Preuve -> Métier (Intersection validée par l'Exigence)
+        Preuve -> Phase Projet (Intersection validée par l'Exigence)
+
+        Returns:
+            pd.DataFrame avec les colonnes :
+            Preuves, Article, Domaine, Phase, Métier, À Enjeux
+        """
+        columns = ["Preuves", "Article", "Domaine", "Phase", "Métier", "À Enjeux"]
+
+        proj_node = self.qry.find_node_by_exact_metadata(
+            "name",
+            project_name,
+            NodeType.PROJET
+        )
+
+        if not proj_node:
+            return pd.DataFrame(columns=columns)
+
+        results = []
+
+        exigences = self.qry.get_neighbors(
+            proj_node.id,
+            NodeType.EXIGENCE
+        )
+
+        for exg in exigences:
+
+            # ---------- Articles et domaines ----------
+            articles_data = []
+
+            sous_articles = self.qry.get_neighbors(
+                exg.id,
+                NodeType.SOUS_ARTICLE
+            )
+
+            for sous_article in sous_articles:
+                articles = self.qry.get_neighbors(
+                    sous_article.id,
+                    NodeType.ARTICLE
+                )
+
+                for article in articles:
+                    article_name = article.metadata.get("name", "")
+
+                    domains = self.qry.get_neighbors(
+                        article.id,
+                        NodeType.DOMAINE
+                    )
+
+                    # Un article doit être lié à un seul domaine
+                    domain_name = (
+                        domains[0].metadata.get("name", "")
+                        if domains
+                        else ""
+                    )
+
+                    articles_data.append(
+                        (article_name, domain_name)
+                    )
+
+            # Suppression des doublons Article / Domaine
+            articles_data = list(set(articles_data))
+
+            if not articles_data:
+                articles_data = [("", "")]
+
+            # ---------- DÉBUT DES MODIFICATIONS ----------
+            
+            # 1. On récupère les Métiers et Phases liés directement à l'Exigence considérée
+            exg_neighbors = self.qry.get_neighbors(exg.id)
+            
+            exg_metiers = {
+                node.metadata.get("name", "")
+                for node in exg_neighbors
+                if node.type == NodeType.METIER
+                and node.metadata.get("name")
+            }
+            
+            exg_phases = {
+                node.metadata.get("name", "")
+                for node in exg_neighbors
+                if node.type == NodeType.PHASE_PROJET
+                and node.metadata.get("name")
+            }
+
+            # ---------- Preuves ----------
+            preuves = self.qry.get_neighbors(
+                exg.id,
+                NodeType.PREUVE
+            )
+
+            for preuve in preuves:
+                preuve_text = (
+                    preuve.metadata.get("description")
+                    or preuve.metadata.get("name")
+                    or ""
+                )
+
+                preuve_neighbors = self.qry.get_neighbors(preuve.id)
+
+                # 2. On récupère les Métiers et Phases liés à la Preuve
+                preuve_metiers = {
+                    node.metadata.get("name", "")
+                    for node in preuve_neighbors
+                    if node.type == NodeType.METIER
+                    and node.metadata.get("name")
+                }
+
+                preuve_phases = {
+                    node.metadata.get("name", "")
+                    for node in preuve_neighbors
+                    if node.type == NodeType.PHASE_PROJET
+                    and node.metadata.get("name")
+                }
+
+                # 3. INTERSECTION : On ne garde que les éléments communs à l'Exigence et à la Preuve
+                # Si l'exigence n'a aucun métier/phase, l'intersection sera vide (et évitera le bug)
+                metiers = list(preuve_metiers.intersection(exg_metiers)) if exg_metiers else []
+                phases = list(preuve_phases.intersection(exg_phases)) if exg_phases else []
+
+                if not metiers:
+                    metiers = [""]
+
+                if not phases:
+                    phases = [""]
+
+                # ---------- FIN DES MODIFICATIONS ----------
 
                 a_enjeux_val = True if exg.metadata.get("À Enjeux") is True else ""
 
