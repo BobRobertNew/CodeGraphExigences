@@ -6,6 +6,13 @@ import pandas as pd
 from graph_tool.infrastructure.networkx_repository import NetworkXGraphRepository
 from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
+from graph_tool.use_cases.extractors import (
+    CreateExigenceAndArticlesStep,
+    LinkMetierStep,
+    LinkPhaseProjetStep,
+    LinkPreuveStep,
+    LinkArticleToDomainStep
+)
 import io
 
 # À lancer avec py -m streamlit run graph_tool\ui\app.py --server.port 8601
@@ -62,6 +69,28 @@ def process_preuves_extraction(uploaded_files):
             project_name = extract_project_name(uploaded_file.name)
             st.write(f"Traitement du projet: **{project_name}** depuis `{uploaded_file.name}`")
 
+            # Determine domain based on filename
+            filename_no_ext = os.path.splitext(uploaded_file.name)[0]
+            domain = None
+            if filename_no_ext.endswith("_Enviro"):
+                domain = "Environnement"
+            elif filename_no_ext.endswith("Energie"):
+                domain = "Energie"
+            elif filename_no_ext.endswith("HS"):
+                domain = "Hygiène Sécurité"
+
+            steps = [
+                CreateExigenceAndArticlesStep(),
+                LinkMetierStep(),
+                LinkPhaseProjetStep(),
+                LinkPreuveStep()
+            ]
+
+            if domain:
+                steps.append(LinkArticleToDomainStep(domain))
+            else:
+                st.warning(f"Aucun domaine reconnu pour le fichier `{uploaded_file.name}`. Les articles ne seront pas associés à un domaine.")
+
             try:
                 # Note pour le futur: Pour conserver le graphe entre les différentes actions (ex: bouton 2),
                 # on pourrait stocker l'instance `repo` dans st.session_state (ex: st.session_state.repo = repo)
@@ -69,6 +98,7 @@ def process_preuves_extraction(uploaded_files):
                 cmd.add_project_exigences(
                     project_name=project_name,
                     data_source=file_path,
+                    steps=steps,
                     owner="Streamlit User",
                     author="Streamlit User"
                 )
