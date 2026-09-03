@@ -8,7 +8,7 @@ from graph_tool.use_cases.commands import CommandHandler
 from graph_tool.use_cases.queries import QueryHandler
 import io
 
-# À lancer avec py -m streamlit run app.py
+# À lancer avec py -m streamlit run graph_tool\ui\app.py --server.port 8601
 
 def extract_project_name(filename: str) -> str:
     """Extracts project name from filename format xxx_nomProjet_xxxxx."""
