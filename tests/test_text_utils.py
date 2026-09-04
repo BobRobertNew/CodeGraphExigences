@@ -323,6 +323,24 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_order_independent(self):
+        choices = ["John Doe", "Jane Smith"]
+        self.assertEqual(find_best_match("Doe John", choices, threshold=80), "John Doe")
+
+    def test_find_best_match_different_separators(self):
+        choices = ["hello-world", "foo_bar", "test.case"]
+        self.assertEqual(find_best_match("hello world", choices, threshold=80), "hello-world")
+
+    def test_find_best_match_accented_characters(self):
+        choices = ["cafe", "resume", "expose"]
+        # rapidfuzz may not automatically normalize accents depending on configuration,
+        # but check if it's close enough due to 1 char difference
+        self.assertEqual(find_best_match("café", choices, threshold=70), "cafe")
+
+    def test_find_best_match_prefix_partial(self):
+        choices = ["supercalifragilisticexpialidocious", "something else"]
+        self.assertEqual(find_best_match("supercali", choices, threshold=80), "supercalifragilisticexpialidocious")
+
 
 if __name__ == "__main__":
     unittest.main()
