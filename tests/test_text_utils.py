@@ -323,6 +323,25 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_unicode_normalization_edge_cases(self):
+        # rapidfuzz processes strings strictly character by character based on code points
+        char1 = "é"  # Combined form (U+00E9)
+        char2 = "e\u0301"  # Decomposed form (U+0065 U+0301)
+        # They will score 0.0 against each other.
+        match, score = find_best_match_with_score(char2, [char1], threshold=0)
+        self.assertEqual(match, char1)
+        self.assertEqual(score, 0)
+
+    def test_find_best_match_zero_score_match(self):
+        # Even if extractOne returns a match, if it scores 0 it should fail to meet the default threshold (70)
+        # rapidfuzz returns score 0 for strings that have no similarities
+        choices = ["abc"]
+        self.assertIsNone(find_best_match("xyz", choices))
+
+    def test_find_best_match_all_empty_strings(self):
+        choices = ["", ""]
+        self.assertIsNone(find_best_match("query", choices))
+
 
 if __name__ == "__main__":
     unittest.main()
