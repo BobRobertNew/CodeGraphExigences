@@ -323,6 +323,24 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_regex_literals(self):
+        choices = [".*?", "^[a-z]+$"]
+        self.assertEqual(find_best_match(".*?", choices), ".*?")
+
+    def test_find_best_match_null_bytes(self):
+        choices = ["a\x00b", "a\x00c"]
+        self.assertEqual(find_best_match("a\x00b", choices), "a\x00b")
+
+    def test_find_best_match_unnormalized_unicode(self):
+        # rapidfuzz evaluates character code points, so these shouldn't match completely unless normalized
+        choices = ["\u00e9"] # combined 'é'
+        query = "e\u0301" # decomposed 'é'
+        self.assertIsNone(find_best_match(query, choices, threshold=99))
+
+    def test_find_best_match_large_choices(self):
+        choices = ["choice" + str(i) for i in range(10000)] + ["target_string"]
+        self.assertEqual(find_best_match("target_string", choices), "target_string")
+
 
 if __name__ == "__main__":
     unittest.main()
