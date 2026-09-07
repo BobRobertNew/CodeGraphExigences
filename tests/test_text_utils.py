@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -279,7 +279,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +287,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
@@ -322,6 +322,26 @@ class TestTextUtils(unittest.TestCase):
         match, score = find_best_match_with_score("apple", choices, threshold=105)
         self.assertIsNone(match)
         self.assertIsNone(score)
+
+    def test_find_best_match_unicode_normalization(self):
+        # Equivalent Unicode representations should match exactly if normalized,
+        # but rapidfuzz does strict character-by-character evaluation
+        # e (U+0065) + acute accent (U+0301) vs é (U+00E9)
+        choices = ["e\u0301"]
+        self.assertIsNone(find_best_match("\u00e9", choices, threshold=100))
+
+    def test_find_best_match_regex_characters(self):
+        # Choices containing special regex-like characters
+        choices = [".*", "^$", "[a-z]+"]
+        self.assertEqual(find_best_match(".*", choices, threshold=100), ".*")
+        self.assertEqual(find_best_match("^$", choices, threshold=100), "^$")
+
+    def test_find_best_match_very_low_threshold(self):
+        # Very low threshold allows matching completely different strings
+        choices = ["apple", "banana"]
+        match = find_best_match("xylophone", choices, threshold=0)
+        self.assertIsNotNone(match)
+        self.assertIn(match, choices)
 
 
 if __name__ == "__main__":
