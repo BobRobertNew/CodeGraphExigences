@@ -324,5 +324,52 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+    def test_find_best_match_integer_zero_query(self):
+        self.assertIsNone(find_best_match(0, ["1", "2"]))
+
+    def test_find_best_match_integer_zero_choices(self):
+        self.assertIsNone(find_best_match("apple", 0))
+
+    def test_find_best_match_with_score_integer_zero_query(self):
+        match, score = find_best_match_with_score(0, ["1", "2"])
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_integer_zero_choices(self):
+        match, score = find_best_match_with_score("apple", 0)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_large_choices(self):
+        choices = ["apple" + str(i) for i in range(1000)] + ["banana"]
+        self.assertEqual(find_best_match("banana", choices), "banana")
+
+    def test_find_best_match_regex_characters(self):
+        # Strings containing regex special characters should be matched literally
+        choices = ["apple.*", "apple?", "apple+"]
+        self.assertEqual(find_best_match("apple.*", choices), "apple.*")
+
+    def test_find_best_match_very_similar_strings(self):
+        # Very similar strings to test the fuzzy matching differentiation
+        choices = ["this is a test string", "this is a test spring", "this is a test sprint"]
+        self.assertEqual(find_best_match("this is a test sprint", choices), "this is a test sprint")
+
+    def test_find_best_match_different_length_strings(self):
+        # Query is much longer or shorter than choices
+        choices = ["a", "ab", "abc"]
+        self.assertEqual(find_best_match("abcde", choices, threshold=50), "a")
+
+    def test_find_best_match_with_score_regex_characters(self):
+        choices = ["apple.*", "apple?", "apple+"]
+        match, score = find_best_match_with_score("apple.*", choices)
+        self.assertEqual(match, "apple.*")
+        self.assertEqual(score, 100.0)
+
+    def test_find_best_match_with_score_very_similar_strings(self):
+        choices = ["this is a test string", "this is a test spring", "this is a test sprint"]
+        match, score = find_best_match_with_score("this is a test sprint", choices)
+        self.assertEqual(match, "this is a test sprint")
+        self.assertEqual(score, 100.0)
+
 if __name__ == "__main__":
     unittest.main()
