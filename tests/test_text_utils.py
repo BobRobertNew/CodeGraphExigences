@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -279,7 +279,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +287,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
@@ -322,6 +322,20 @@ class TestTextUtils(unittest.TestCase):
         match, score = find_best_match_with_score("apple", choices, threshold=105)
         self.assertIsNone(match)
         self.assertIsNone(score)
+
+    def test_find_best_match_unicode_normalization_mismatch(self):
+        # Memory rule: rapidfuzz evaluates based on strict unicode code points.
+        # Combined 'é' (U+00E9) vs decomposed 'e\u0301' (U+0065 U+0301)
+        # They will not be an exact match (score < 100).
+        choices = ["cafe\u0301", "tea"]
+        self.assertIsNone(find_best_match("café", choices, threshold=100))
+        # But they will match partially due to "cafe", score is ~66.6
+        self.assertEqual(find_best_match("café", choices, threshold=60), "cafe\u0301")
+
+    def test_find_best_match_control_characters(self):
+        # Test fuzzy matching with control characters like null bytes
+        choices = ["apple\x00", "banana"]
+        self.assertEqual(find_best_match("apple", choices, threshold=80), "apple\x00")
 
 
 if __name__ == "__main__":
