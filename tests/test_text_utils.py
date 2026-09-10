@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -230,6 +230,16 @@ class TestTextUtils(unittest.TestCase):
         # Not a match
         self.assertIsNone(find_best_match("こんばんわ", choices, threshold=90))
 
+    def test_find_best_match_unicode_normalization_mismatch(self):
+        # rapidfuzz evaluates strings character by character based on strict unicode code points.
+        # Equivalent Unicode representations (e.g., combined `é` vs decomposed `e\u0301`)
+        # will result in a 0.0 match score unless explicitly normalized before matching.
+        combined = "\u00e9"   # 'é'
+        decomposed = "e\u0301" # 'e' + combining acute accent
+
+        # They should not match because they are different code points
+        self.assertIsNone(find_best_match(decomposed, [combined], threshold=70))
+
     def test_find_best_match_long_strings(self):
         long_query = "a" * 1000
         choices = ["a" * 1000, "b" * 1000]
@@ -279,7 +289,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +297,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
