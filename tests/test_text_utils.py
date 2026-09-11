@@ -323,6 +323,22 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_edge_case_empty_query_string(self):
+        self.assertIsNone(find_best_match("", ["apple", "banana"]))
+
+    def test_find_best_match_edge_case_empty_choices_list(self):
+        self.assertIsNone(find_best_match("apple", []))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_edge_case_exact_threshold_match(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 70.0, 0)
+        self.assertEqual(find_best_match("appl", ["apple"], threshold=70), "apple")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_edge_case_just_below_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 69.9, 0)
+        self.assertIsNone(find_best_match("appl", ["apple"], threshold=70))
+
 
 if __name__ == "__main__":
     unittest.main()
