@@ -323,6 +323,18 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_fuzzy_matching_edge_cases(self):
+        # Edge case: Query is whitespace only, choices contain similar whitespace but different length
+        self.assertIsNone(find_best_match(" ", ["   ", "\t"], threshold=96))
+        # Edge case: Similar strings with different casing (fuzzy matching might give less than 100 but more than 0)
+        self.assertEqual(find_best_match("Apple", ["apple", "banana"], threshold=50), "apple")
+        # Edge case: Very short string with high threshold
+        self.assertIsNone(find_best_match("a", ["b", "c"], threshold=90))
+        # Edge case: Completely different strings with low threshold (might actually match with a low score)
+        self.assertIsNone(find_best_match("xyz", ["abc", "def"], threshold=100))
+        # Edge case: Query is a substring of a choice, check if threshold logic holds
+        self.assertEqual(find_best_match("test", ["testing", "tester"], threshold=60), "testing")
+
 
 if __name__ == "__main__":
     unittest.main()
