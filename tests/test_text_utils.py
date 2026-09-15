@@ -324,5 +324,34 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+    def test_find_best_match_unicode_normalization(self):
+        # é vs e\u0301
+        choices = ["e\u0301"]
+        self.assertIsNone(find_best_match("é", choices, threshold=100))
+
+    def test_find_best_match_with_score_unicode_normalization(self):
+        choices = ["e\u0301"]
+        match, score = find_best_match_with_score("é", choices, threshold=100)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_core_empty_query_boundary(self):
+        self.assertIsNone(find_best_match("", ["apple"]))
+
+    def test_find_best_match_core_empty_choices_boundary(self):
+        self.assertIsNone(find_best_match("apple", []))
+
+    def test_find_best_match_core_none_inputs_boundary(self):
+        self.assertIsNone(find_best_match(None, ["apple"]))
+        self.assertIsNone(find_best_match("apple", None))
+
+    def test_find_best_match_core_exact_match_boundary(self):
+        self.assertEqual(find_best_match("apple", ["apple", "banana"]), "apple")
+
+    def test_find_best_match_core_default_threshold_boundary(self):
+        # Assumes default threshold is 70
+        self.assertEqual(find_best_match("apple", ["apple", "banana"]), "apple")
+        self.assertIsNone(find_best_match("xylophone", ["apple", "banana"]))
+
 if __name__ == "__main__":
     unittest.main()
