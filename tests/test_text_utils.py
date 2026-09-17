@@ -324,5 +324,54 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+
+    def test_find_best_match_unicode_normalization_issue(self):
+        # rapidfuzz evaluates strings character by character based on strict unicode code points.
+        # Equivalent Unicode representations (e.g., combined `é` vs decomposed `é`)
+        # will result in a 0.0 match score.
+        choices = ["café"]  # decomposed
+        query = "café"  # composed
+        self.assertIsNone(find_best_match(query, choices, threshold=67))
+
+    def test_find_best_match_with_score_unicode_normalization_issue(self):
+        choices = ["café"]
+        query = "café"
+        match, score = find_best_match_with_score(query, choices, threshold=67)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+
+
+    def test_find_best_match_empty_query_boundary(self):
+        # Additional edge case for empty query
+        self.assertIsNone(find_best_match("", ["apple", "banana"]))
+
+    def test_find_best_match_empty_choices_boundary(self):
+        # Additional edge case for empty choices
+        self.assertIsNone(find_best_match("apple", []))
+
+    def test_find_best_match_none_query_boundary(self):
+        # Additional edge case for None query
+        self.assertIsNone(find_best_match(None, ["apple", "banana"]))
+
+    def test_find_best_match_none_choices_boundary(self):
+        # Additional edge case for None choices
+        self.assertIsNone(find_best_match("apple", None))
+
+    def test_find_best_match_threshold_boundary_exact(self):
+        # Threshold boundary exact score
+        # "aple" vs "apple" might be scored around 88.88.. by rapidfuzz
+        # We mock it to ensure exact boundary is tested
+        with patch('graph_tool.utils.text_utils.process.extractOne') as mock_extractOne:
+            mock_extractOne.return_value = ("apple", 70)
+            self.assertEqual(find_best_match("appl", ["apple"], threshold=70), "apple")
+
+    def test_find_best_match_threshold_boundary_below(self):
+        # Threshold boundary just below score
+        with patch('graph_tool.utils.text_utils.process.extractOne') as mock_extractOne:
+            mock_extractOne.return_value = ("apple", 69.9)
+            self.assertIsNone(find_best_match("appl", ["apple"], threshold=70))
+
+
 if __name__ == "__main__":
     unittest.main()
