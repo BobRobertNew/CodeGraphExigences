@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -230,6 +230,26 @@ class TestTextUtils(unittest.TestCase):
         # Not a match
         self.assertIsNone(find_best_match("こんばんわ", choices, threshold=90))
 
+    def test_find_best_match_unicode_decomposed(self):
+        # rapidfuzz evaluates characters strictly by code point
+        # "é" is composed, "e\u0301" is decomposed
+        choices = ["e\u0301"]
+        self.assertIsNone(find_best_match("é", choices, threshold=90))
+
+    def test_find_best_match_empty_list_choices_explicit(self):
+        # Explicit test for empty list choices as requested by reviewer
+        self.assertIsNone(find_best_match("apple", []))
+
+    def test_find_best_match_empty_string_query_explicit(self):
+        # Explicit test for empty string query as requested by reviewer
+        self.assertIsNone(find_best_match("", ["apple", "banana"]))
+
+    def test_find_best_match_punctuation_handling_bounds(self):
+        # Test punctuation at the boundaries and exact matches
+        choices = ["apple.", "banana!", "?cherry"]
+        self.assertEqual(find_best_match("apple.", choices, threshold=100), "apple.")
+        self.assertIsNone(find_best_match("apple", choices, threshold=100))
+
     def test_find_best_match_long_strings(self):
         long_query = "a" * 1000
         choices = ["a" * 1000, "b" * 1000]
@@ -279,7 +299,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +307,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
