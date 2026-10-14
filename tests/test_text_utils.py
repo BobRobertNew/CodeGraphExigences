@@ -323,6 +323,21 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_unicode_normalization_edge_case(self):
+        # rapidfuzz evaluates strings character by character based on strict unicode code points.
+        # Equivalent Unicode representations (e.g., combined `é` vs decomposed `e\u0301`)
+        # will result in a 0.0 match score unless explicitly normalized before matching.
+        composed_e = "é"
+        decomposed_e = "e\u0301"
+        self.assertIsNone(find_best_match(decomposed_e, [composed_e], threshold=1))
+
+    def test_find_best_match_with_score_unicode_normalization_edge_case(self):
+        composed_e = "é"
+        decomposed_e = "e\u0301"
+        match, score = find_best_match_with_score(decomposed_e, [composed_e], threshold=1)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
 
 if __name__ == "__main__":
     unittest.main()
