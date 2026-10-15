@@ -323,6 +323,37 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_anagram(self):
+        choices = ["silent", "enlist", "tinsel"]
+        # 'listen' is an anagram of these words. RapidFuzz matches 'enlist' better (66.6) than 'silent' (50.0).
+        # It's an edge case showing sequence matching vs just character presence.
+        self.assertIsNone(find_best_match("listen", choices, threshold=70))
+        self.assertEqual(find_best_match("listen", choices, threshold=40), "enlist")
+
+    def test_find_best_match_repeated_characters(self):
+        choices = ["appppppple", "banananana"]
+        # Repeated characters throw off ratio matching.
+        # "apple" vs "appppppple" usually gives a score around 80 in RapidFuzz.
+        self.assertEqual(find_best_match("apple", choices, threshold=70), "appppppple")
+
+    def test_find_best_match_completely_disjoint(self):
+        choices = ["xyz", "uvw"]
+        # No characters in common, should score 0.
+        self.assertIsNone(find_best_match("abc", choices, threshold=1))
+        match, score = find_best_match_with_score("abc", choices, threshold=0)
+        self.assertIsNotNone(match)
+        self.assertEqual(score, 0)
+
+    def test_find_best_match_regex_characters(self):
+        # Ensure fuzzy match doesn't interpret regex metacharacters
+        choices = [".*?^$", "[a-z]+", "\\d+"]
+        self.assertEqual(find_best_match(".*?", choices, threshold=80), ".*?^$")
+
+    def test_find_best_match_case_difference_threshold(self):
+        # Case differences lower the score. RapidFuzz usually gives 'Apple' vs 'apple' a score of 80.
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("Apple", choices, threshold=75), "apple")
+        self.assertIsNone(find_best_match("Apple", choices, threshold=85))
 
 if __name__ == "__main__":
     unittest.main()
