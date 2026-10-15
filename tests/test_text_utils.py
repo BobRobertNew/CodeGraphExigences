@@ -324,5 +324,32 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_mock_three_tuple(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 90.0, 0)
+        self.assertEqual(find_best_match("apple", ["apple"]), "apple")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_with_score_mock_three_tuple(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 90.0, 0)
+        match, score = find_best_match_with_score("apple", ["apple"])
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 90.0)
+
+
+    def test_find_best_match_empty_choices_and_query_boundary(self):
+        self.assertIsNone(find_best_match("", []))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_exact_threshold_boundary(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 70.0, 0)
+        self.assertEqual(find_best_match("appl", ["apple", "banana"], threshold=70), "apple")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_below_threshold_boundary(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 69.9, 0)
+        self.assertIsNone(find_best_match("appl", ["apple", "banana"], threshold=70))
+
 if __name__ == "__main__":
     unittest.main()
