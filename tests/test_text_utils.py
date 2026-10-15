@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -194,6 +194,22 @@ class TestTextUtils(unittest.TestCase):
         choices = (x for x in [])
         self.assertIsNone(find_best_match("apple", choices))
 
+    def test_find_best_match_regex_characters(self):
+        choices = ["^.*$", "regular text", ".*"]
+        self.assertEqual(find_best_match("^.*$", choices, threshold=100), "^.*$")
+
+    def test_find_best_match_control_characters(self):
+        choices = ["hello\x00world", "hello world", "hello\bworld"]
+        self.assertEqual(find_best_match("hello\x00world", choices, threshold=100), "hello\x00world")
+
+    def test_find_best_match_short_query_long_choices(self):
+        long_choice = "a" * 1000
+        choices = [long_choice, "b" * 1000]
+        # 'a' matching against 1000 'a's has a very low score
+        self.assertIsNone(find_best_match("a", choices, threshold=90))
+        # Matching against itself should work
+        self.assertEqual(find_best_match("a", ["a"], threshold=100), "a")
+
     def test_find_best_match_out_of_bounds_threshold(self):
         choices = ["apple", "banana"]
         # Threshold > 100 should never match since max score is 100
@@ -279,7 +295,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +303,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
