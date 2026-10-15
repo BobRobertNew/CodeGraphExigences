@@ -324,5 +324,64 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+
+    def test_find_best_match_unicode_composed_vs_decomposed(self):
+        # rapidfuzz evaluates strings character by character based on strict unicode code points.
+        # Equivalent Unicode representations (e.g., combined `é` vs decomposed `e\u0301`)
+        # will result in a 0.0 match score unless explicitly normalized before matching.
+        composed_query = "é"  # e with acute accent as a single character (\u00e9)
+        decomposed_choice = "e\u0301"  # e followed by combining acute accent (\u0301)
+        # Using a very low threshold to show that the score is strictly 0.0
+        self.assertIsNone(find_best_match(composed_query, [decomposed_choice], threshold=1))
+
+
+    def test_find_best_match_with_score_unicode_composed_vs_decomposed(self):
+        # rapidfuzz evaluates strings character by character based on strict unicode code points.
+        # Equivalent Unicode representations (e.g., combined `é` vs decomposed `e\u0301`)
+        # will result in a 0.0 match score unless explicitly normalized before matching.
+        composed_query = "é"  # e with acute accent as a single character (\u00e9)
+        decomposed_choice = "e\u0301"  # e followed by combining acute accent (\u0301)
+        # Using a very low threshold to show that the score is strictly 0.0
+        match, score = find_best_match_with_score(composed_query, [decomposed_choice], threshold=1)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+
+    def test_find_best_match_empty_query_explicit(self):
+        choices = ["apple", "banana"]
+        self.assertIsNone(find_best_match("", choices))
+
+    def test_find_best_match_empty_choices_explicit(self):
+        self.assertIsNone(find_best_match("apple", []))
+
+    def test_find_best_match_none_query_explicit(self):
+        choices = ["apple", "banana"]
+        self.assertIsNone(find_best_match(None, choices))
+
+    def test_find_best_match_none_choices_explicit(self):
+        self.assertIsNone(find_best_match("apple", None))
+
+    def test_find_best_match_with_score_empty_query_explicit(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("", choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_empty_choices_explicit(self):
+        match, score = find_best_match_with_score("apple", [])
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_none_query_explicit(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score(None, choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_none_choices_explicit(self):
+        match, score = find_best_match_with_score("apple", None)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
 if __name__ == "__main__":
     unittest.main()
