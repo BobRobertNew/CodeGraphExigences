@@ -93,16 +93,25 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
+
+    def test_find_best_match_zero_threshold(self):
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("appl", choices, threshold=0), "apple")
+
+    def test_find_best_match_empty_string_list(self):
+        choices = ["", ""]
+        # `if not query:` evaluates to True for "", returning None.
+        self.assertIsNone(find_best_match("", choices))
 
     def test_find_best_match_similar_strings(self):
         choices = ["apple tree", "apple", "green apple"]
@@ -279,7 +288,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,11 +296,18 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
         self.assertIsNone(score)
+
+    def test_find_best_match_with_score_zero_threshold(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("appl", choices, threshold=0)
+        self.assertEqual(match, "apple")
+        self.assertIsNotNone(score)
+        self.assertGreaterEqual(score, 0)
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_type_error(self, mock_extractOne):
