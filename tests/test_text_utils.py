@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -279,7 +279,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +287,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
@@ -322,6 +322,29 @@ class TestTextUtils(unittest.TestCase):
         match, score = find_best_match_with_score("apple", choices, threshold=105)
         self.assertIsNone(match)
         self.assertIsNone(score)
+
+
+    def test_find_best_match_zero_threshold_no_match(self):
+        # Even with threshold 0, if choices are completely irrelevant or empty after processing, it might return None
+        choices = [""]
+        self.assertEqual(find_best_match("a", choices, threshold=0), "")
+
+    def test_find_best_match_with_score_zero_threshold_no_match(self):
+        choices = [""]
+        match, score = find_best_match_with_score("a", choices, threshold=0)
+        self.assertEqual(match, "")
+        self.assertEqual(score, 0.0)
+
+    def test_find_best_match_large_choices_list(self):
+        # Testing behavior with a large list of choices
+        choices = [f"choice_{i}" for i in range(1000)] + ["target_choice"]
+        self.assertEqual(find_best_match("target_choice", choices), "target_choice")
+
+    def test_find_best_match_with_score_large_choices_list(self):
+        choices = [f"choice_{i}" for i in range(1000)] + ["target_choice"]
+        match, score = find_best_match_with_score("target_choice", choices)
+        self.assertEqual(match, "target_choice")
+        self.assertEqual(score, 100)
 
 
 if __name__ == "__main__":
