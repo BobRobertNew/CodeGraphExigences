@@ -150,6 +150,62 @@ class TestQueryHandler(unittest.TestCase):
         self.assertEqual(no_doc, [])
         self.assertEqual(with_doc, [])
 
+
+    def test_get_common_exigences_for_projects(self):
+        p1 = Node(id="p1", type=NodeType.PROJET, metadata={"name": "Project A"})
+        p2 = Node(id="p2", type=NodeType.PROJET, metadata={"name": "Project B"})
+        exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "Exigence 1"})
+        exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "Exigence 2"})
+        exg3 = Node(id="e3", type=NodeType.EXIGENCE, metadata={"description": "Exigence 3"})
+        sart1 = Node(id="s1", type=NodeType.SOUS_ARTICLE, metadata={"name": "Sous-article 1"})
+        art1 = Node(id="a1", type=NodeType.ARTICLE, metadata={"name": "Article 1"})
+
+        self.repo.add_node(p1)
+        self.repo.add_node(p2)
+        self.repo.add_node(exg1)
+        self.repo.add_node(exg2)
+        self.repo.add_node(exg3)
+        self.repo.add_node(sart1)
+        self.repo.add_node(art1)
+
+        # exg1 is common to p1 and p2. Connected to sart1 and art1.
+        self.repo.add_edge(Edge("p1", "e1"))
+        self.repo.add_edge(Edge("p2", "e1"))
+        self.repo.add_edge(Edge("e1", "s1"))
+        self.repo.add_edge(Edge("s1", "a1"))
+
+        # exg2 is common, but no sous_article
+        self.repo.add_edge(Edge("p1", "e2"))
+        self.repo.add_edge(Edge("p2", "e2"))
+
+        # exg3 is only in p1
+        self.repo.add_edge(Edge("p1", "e3"))
+
+        df = self.query_handler.get_common_exigences_for_projects("Project A", "Project B")
+        self.assertEqual(len(df), 2)
+        self.assertEqual(list(df.columns), ["Exigences", "Articles", "Sous_Article"])
+
+        # We can't guarantee order since we used sets, so sort or check content carefully
+        df_sorted = df.sort_values(by="Exigences").reset_index(drop=True)
+        self.assertEqual(df_sorted.loc[0, "Exigences"], "Exigence 1")
+        self.assertEqual(df_sorted.loc[0, "Sous_Article"], "Sous-article 1")
+        self.assertEqual(df_sorted.loc[0, "Articles"], "Article 1")
+
+        self.assertEqual(df_sorted.loc[1, "Exigences"], "Exigence 2")
+        self.assertEqual(df_sorted.loc[1, "Sous_Article"], "")
+        self.assertEqual(df_sorted.loc[1, "Articles"], "")
+
+        # Test no common exigences
+        self.repo.add_node(Node(id="p3", type=NodeType.PROJET, metadata={"name": "Project C"}))
+        df_empty = self.query_handler.get_common_exigences_for_projects("Project A", "Project C")
+        self.assertTrue(df_empty.empty)
+        self.assertEqual(list(df_empty.columns), ["Exigences", "Articles", "Sous_Article"])
+
+        # Test project not found
+        df_missing = self.query_handler.get_common_exigences_for_projects("Project A", "Project Z")
+        self.assertTrue(df_missing.empty)
+        self.assertEqual(list(df_missing.columns), ["Exigences", "Articles", "Sous_Article"])
+
     def test_find_most_similar_exigencies(self):
         exg1 = Node(id="e1", type=NodeType.EXIGENCE, metadata={"description": "System shall run fast"})
         exg2 = Node(id="e2", type=NodeType.EXIGENCE, metadata={"description": "The system must be secure"})
