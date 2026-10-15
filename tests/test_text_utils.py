@@ -323,6 +323,53 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_regex_metacharacters(self):
+        # rapidfuzz should treat characters literally, not as regex
+        choices = ["match^this$", "match*this+", "match.this?"]
+        self.assertEqual(find_best_match("match^this$", choices, threshold=100), "match^this$")
+        self.assertEqual(find_best_match("match.*", choices, threshold=50), "match*this+")
+
+    def test_find_best_match_html_tags(self):
+        # rapidfuzz processes strings exactly as provided
+        choices = ["<div>hello</div>", "<p>hello</p>", "<span>world</span>"]
+        self.assertEqual(find_best_match("<div>hello</div>", choices, threshold=100), "<div>hello</div>")
+
+    def test_find_best_match_anagrams(self):
+        choices = ["listen", "silent", "enlist"]
+        # rapidfuzz gives scores based on edit distance, not anagram sets
+        # "silent" vs "listen" score is around 46, "listen" vs "enlist" around 33
+        self.assertIsNone(find_best_match("listen", ["silent", "enlist"], threshold=70))
+
+    def test_find_best_match_query_longer_than_any_choice(self):
+        # query length significantly exceeds choice length
+        query = "This is a very long query string that contains the word apple among many other words"
+        choices = ["apple", "banana", "cherry"]
+        self.assertEqual(find_best_match(query, choices, threshold=20), "apple")
+
+    def test_find_best_match_choices_longer_than_query(self):
+        # choice length significantly exceeds query length
+        choices = [
+            "This is a long paragraph about apples.",
+            "This is a completely unrelated paragraph about bananas.",
+            "Cherries are small, round stone fruits."
+        ]
+        self.assertEqual(find_best_match("apple", choices, threshold=20), "This is a long paragraph about apples.")
+
+    def test_find_best_match_empty_string_vs_spaces(self):
+        choices = ["   ", "  ", " "]
+        self.assertIsNone(find_best_match("", choices))
+
+    def test_find_best_match_with_score_none_query(self):
+        choices = ["apple", "banana", "cherry"]
+        match, score = find_best_match_with_score(None, choices)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
+    def test_find_best_match_with_score_none_choices(self):
+        match, score = find_best_match_with_score("apple", None)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
 
 if __name__ == "__main__":
     unittest.main()
