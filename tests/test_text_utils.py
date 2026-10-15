@@ -323,6 +323,49 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_null_bytes(self):
+        choices = ["a\x00b", "a\x00c", "a\x00d"]
+        self.assertEqual(find_best_match("a\x00b", choices, threshold=100), "a\x00b")
+        # Ensure it works correctly with scores too
+        match, score = find_best_match_with_score("a\x00e", choices, threshold=60)
+        self.assertIsNotNone(match)
+
+    def test_find_best_match_regex_chars(self):
+        choices = ["a.*", "^a", "a$"]
+        # Ensure regex literal characters are treated literally by fuzzy matching,
+        # which it normally does because it uses levenshtein distances, not regex matching.
+        self.assertEqual(find_best_match("a.*", choices, threshold=100), "a.*")
+        self.assertEqual(find_best_match(".*", choices, threshold=60), "a.*")
+
+    def test_find_best_match_accented_characters(self):
+        choices = ["café", "cliché", "naïve"]
+        # rapidfuzz processes accents properly by default, but it's good to ensure it matching accurately.
+        self.assertEqual(find_best_match("cafe", choices, threshold=75), "café")
+        self.assertEqual(find_best_match("cliche", choices, threshold=80), "cliché")
+
+    def test_find_best_match_tuple_choices(self):
+        # Passing a tuple instead of a list
+        choices = ("apple", "banana", "cherry")
+        self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
+        match, score = find_best_match_with_score("banana", choices, threshold=100)
+        self.assertEqual(match, "banana")
+
+    def test_find_best_match_highly_repetitive(self):
+        choices = ["ababababab", "aaaaabbbbb", "bababababa"]
+        # Exact match
+        self.assertEqual(find_best_match("ababababab", choices, threshold=100), "ababababab")
+        # Fuzzy match with repetitive shifts
+        self.assertEqual(find_best_match("abababababa", choices, threshold=90), "ababababab")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_mixed_types_mocked(self, mock_extractOne):
+        # We know python variables can hold mixed types. We want to be sure
+        # if the process raises something unusual (like TypeError on numbers, but if ignored), we handle it right,
+        # but rapidfuzz extractOne typically just returns type errors if fed integers.
+        mock_extractOne.side_effect = TypeError("Invalid Type")
+        with self.assertRaises(TypeError):
+            find_best_match("a", ["a", 123, "c"])
+
 
 if __name__ == "__main__":
     unittest.main()
