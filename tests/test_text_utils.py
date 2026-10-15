@@ -324,5 +324,33 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_boundary_above_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 70.1)
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
+
+    def test_find_best_match_single_space(self):
+        choices = [" ", "a"]
+        self.assertEqual(find_best_match(" ", choices, threshold=100), " ")
+        self.assertIsNone(find_best_match(" ", ["apple", "banana"]))
+
+    def test_find_best_match_punctuation_only(self):
+        choices = ["!", "?", "."]
+        self.assertEqual(find_best_match("!", choices, threshold=100), "!")
+        self.assertIsNone(find_best_match("!", ["apple", "banana"]))
+
+    def test_find_best_match_very_different_lengths(self):
+        choices = ["this is a very long sentence that has many words in it", "short"]
+        self.assertIsNone(find_best_match("this", choices, threshold=80))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_with_score_boundary_above_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 70.1)
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("appl", choices, threshold=70)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 70.1)
+
 if __name__ == "__main__":
     unittest.main()
