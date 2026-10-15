@@ -323,6 +323,26 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_single_choice(self):
+        # List containing only one choice
+        choices = ["apple"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
+        self.assertIsNone(find_best_match("banana", choices, threshold=90))
+
+    def test_find_best_match_complex_unicode_edge_cases(self):
+        # Strings with complex Unicode like zero-width spaces or emojis inside the string list
+        choices = ["apple\u200b", "banana \U0001f34c"]
+        self.assertEqual(find_best_match("apple\u200b", choices, threshold=100), "apple\u200b")
+        self.assertEqual(find_best_match("banana \U0001f34c", choices, threshold=100), "banana \U0001f34c")
+        self.assertIsNone(find_best_match("cherry", choices, threshold=90))
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_mock_above_threshold(self, mock_extractOne):
+        # Mock result strictly greater than threshold
+        mock_extractOne.return_value = ("apple", 70.001)
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
+
 
 if __name__ == "__main__":
     unittest.main()
