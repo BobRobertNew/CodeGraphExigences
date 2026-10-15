@@ -217,6 +217,7 @@ class TestTextUtils(unittest.TestCase):
         self.assertEqual(find_best_match("   ", choices, threshold=100), "   ")
         # Query is all whitespace, matching a normal string
         self.assertIsNone(find_best_match("   ", ["apple", "banana"]))
+        self.assertIsNone(find_best_match(" ", ["apple", "banana"]))
 
     def test_find_best_match_newlines(self):
         choices = ["apple\nbanana", "apple banana"]
@@ -322,6 +323,14 @@ class TestTextUtils(unittest.TestCase):
         match, score = find_best_match_with_score("apple", choices, threshold=105)
         self.assertIsNone(match)
         self.assertIsNone(score)
+
+    def test_find_best_match_score_boundaries(self):
+        choices = ["ap", "ple", "app"]
+        # "apple" vs "ap" yields a score of 90.0 with the default rapidfuzz scorer.
+        # It should match when the threshold is 90 or lower.
+        self.assertEqual(find_best_match("apple", choices, threshold=90), "ap")
+        # It should not match when the threshold is 91.
+        self.assertIsNone(find_best_match("apple", choices, threshold=91))
 
 
 if __name__ == "__main__":
