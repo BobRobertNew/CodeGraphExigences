@@ -93,14 +93,14 @@ class TestTextUtils(unittest.TestCase):
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_exact_threshold(self, mock_extractOne):
         # Test boundary condition where score equals exactly the threshold
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         self.assertEqual(find_best_match("appl", choices, threshold=70), "apple")
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_boundary_below_threshold(self, mock_extractOne):
         # Test boundary condition where score is just below the threshold
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         self.assertIsNone(find_best_match("appl", choices, threshold=70))
 
@@ -279,7 +279,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_exact_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 70)
+        mock_extractOne.return_value = ("apple", 70.0, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertEqual(match, "apple")
@@ -287,7 +287,7 @@ class TestTextUtils(unittest.TestCase):
 
     @patch('graph_tool.utils.text_utils.process.extractOne')
     def test_find_best_match_with_score_boundary_below_threshold(self, mock_extractOne):
-        mock_extractOne.return_value = ("apple", 69.9)
+        mock_extractOne.return_value = ("apple", 69.9, 0)
         choices = ["apple", "banana"]
         match, score = find_best_match_with_score("appl", choices, threshold=70)
         self.assertIsNone(match)
@@ -322,6 +322,46 @@ class TestTextUtils(unittest.TestCase):
         match, score = find_best_match_with_score("apple", choices, threshold=105)
         self.assertIsNone(match)
         self.assertIsNone(score)
+
+    def test_find_best_match_identical_choices(self):
+        # All choices are exactly the same
+        choices = ["apple", "apple", "apple"]
+        self.assertEqual(find_best_match("apple", choices), "apple")
+
+        match, score = find_best_match_with_score("apple", choices)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 100)
+
+    def test_find_best_match_punctuation_only(self):
+        # Query contains only punctuation
+        choices = ["apple!", "@banana", "cherry#", "!@#"]
+        self.assertEqual(find_best_match("!@#", choices), "!@#")
+
+        match, score = find_best_match_with_score("!@#", choices)
+        self.assertEqual(match, "!@#")
+        self.assertEqual(score, 100)
+
+    def test_find_best_match_large_choices_list(self):
+        # Very large list of choices
+        choices = [f"choice_{i}" for i in range(10000)]
+        choices.append("target_string")
+
+        self.assertEqual(find_best_match("target_string", choices), "target_string")
+
+        match, score = find_best_match_with_score("target_string", choices)
+        self.assertEqual(match, "target_string")
+        self.assertEqual(score, 100)
+
+    def test_find_best_match_invalid_string_type(self):
+        # rapidfuzz may treat an iterable like a string as a list of characters,
+        # but our function expects a list of strings. Passing a string as choices
+        # will cause rapidfuzz to compare against its characters.
+        # "a" is in "apple", so it matches the character 'a' with 100 score.
+        self.assertEqual(find_best_match("a", "apple", threshold=90), "a")
+
+        match, score = find_best_match_with_score("a", "apple", threshold=90)
+        self.assertEqual(match, "a")
+        self.assertEqual(score, 100)
 
 
 if __name__ == "__main__":
