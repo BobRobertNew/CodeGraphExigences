@@ -109,6 +109,35 @@ class TestTextUtils(unittest.TestCase):
         # Ensure it matches the exact one rather than substrings
         self.assertEqual(find_best_match("apple", choices, threshold=100), "apple")
 
+    def test_find_best_match_extremely_similar_strings(self):
+        # 1 character difference
+        choices = ["appld", "applc"]
+        self.assertEqual(find_best_match("apple", choices, threshold=80), "appld")
+
+    def test_find_best_match_anagrams_and_reversed(self):
+        # fuzzy matching with anagrams and reversed strings typically yields low scores
+        choices = ["silent", "enlist"]
+        self.assertIsNone(find_best_match("listen", choices, threshold=70))
+        choices2 = ["olleh", "world"]
+        self.assertIsNone(find_best_match("hello", choices2, threshold=70))
+
+    def test_find_best_match_repetitive_strings(self):
+        choices = ["ababcab", "bababa"]
+        self.assertEqual(find_best_match("ababab", choices, threshold=70), "ababcab")
+
+    def test_find_best_match_rtl_unicode(self):
+        choices = ["مرحباً", "وداعا"]
+        self.assertEqual(find_best_match("مرحبا", choices, threshold=90), "مرحباً")
+
+    def test_find_best_match_html_tags(self):
+        choices = ["<b>apple</b>", "<i>banana</i>"]
+        self.assertEqual(find_best_match("apple", choices, threshold=70), "<b>apple</b>")
+
+    def test_find_best_match_large_choices(self):
+        large_choices = [f"item_{i}" for i in range(10000)]
+        large_choices.append("target_item_xyz")
+        self.assertEqual(find_best_match("target_item_xy", large_choices, threshold=90), "target_item_xyz")
+
     def test_find_best_match_choices_with_none(self):
         # rapidfuzz process can handle None elements by ignoring them
         choices = ["banana", None, "apple"]
