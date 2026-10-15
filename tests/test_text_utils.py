@@ -194,6 +194,35 @@ class TestTextUtils(unittest.TestCase):
         choices = (x for x in [])
         self.assertIsNone(find_best_match("apple", choices))
 
+    def test_find_best_match_very_similar_strings_different_lengths(self):
+        choices = ["app", "apple", "apples", "snapple"]
+        # "apple" should exactly match "apple"
+        self.assertEqual(find_best_match("apple", choices, threshold=90), "apple")
+        # "apples" should match "apples"
+        self.assertEqual(find_best_match("apples", choices, threshold=90), "apples")
+        # "snapple" should match "snapple" exactly
+        self.assertEqual(find_best_match("snapple", choices, threshold=100), "snapple")
+
+    def test_find_best_match_mixed_case_and_punctuation(self):
+        choices = ["Hello, World!", "hello world", "HELLO-WORLD"]
+        # rapidfuzz case-sensitive matching by default might prefer exact case/punctuation matches
+        self.assertEqual(find_best_match("Hello, World!", choices, threshold=100), "Hello, World!")
+        self.assertEqual(find_best_match("HELLO-WORLD", choices, threshold=100), "HELLO-WORLD")
+
+    def test_find_best_match_acronyms(self):
+        choices = ["N.A.S.A.", "NASA", "nasa"]
+        self.assertEqual(find_best_match("NASA", choices, threshold=100), "NASA")
+        self.assertEqual(find_best_match("N.A.S.A.", choices, threshold=100), "N.A.S.A.")
+
+    def test_find_best_match_large_choices_list(self):
+        # List of 1000 items
+        choices = [f"item_{i}" for i in range(1000)]
+        choices.append("needle")
+        choices.extend([f"other_{i}" for i in range(1000)])
+        self.assertEqual(find_best_match("needle", choices, threshold=100), "needle")
+        self.assertEqual(find_best_match("item_999", choices, threshold=100), "item_999")
+        self.assertEqual(find_best_match("other_500", choices, threshold=100), "other_500")
+
     def test_find_best_match_out_of_bounds_threshold(self):
         choices = ["apple", "banana"]
         # Threshold > 100 should never match since max score is 100
