@@ -323,6 +323,21 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_unicode_composed_vs_decomposed(self):
+        # rapidfuzz evaluates characters based on raw unicode code points.
+        # Equivalent representations like decomposed (e + \u0301) vs composed (é)
+        # will have a 0.0 match score since they are structurally different.
+        decomposed_query = "e\u0301"
+        composed_choices = ["é"]
+        self.assertIsNone(find_best_match(decomposed_query, composed_choices, threshold=10))
+
+    def test_find_best_match_with_score_unicode_composed_vs_decomposed(self):
+        decomposed_query = "e\u0301"
+        composed_choices = ["é"]
+        match, score = find_best_match_with_score(decomposed_query, composed_choices, threshold=10)
+        self.assertIsNone(match)
+        self.assertIsNone(score)
+
 
 if __name__ == "__main__":
     unittest.main()
