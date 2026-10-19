@@ -323,6 +323,26 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_edge_case_exactly_on_threshold(self, mock_extractOne):
+        # Mocking process.extractOne to return a 3-element tuple
+        mock_extractOne.return_value = ("apple", 70.0, 0)
+        self.assertEqual(find_best_match("appl", ["apple"], threshold=70), "apple")
+
+    @patch('graph_tool.utils.text_utils.process.extractOne')
+    def test_find_best_match_edge_case_just_below_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 69.9, 0)
+        self.assertIsNone(find_best_match("appl", ["apple"], threshold=70))
+
+    def test_find_best_match_edge_case_exact_match(self):
+        self.assertEqual(find_best_match("apple", ["apple", "banana"]), "apple")
+
+    def test_find_best_match_edge_case_case_insensitivity(self):
+        # "Apple" and "apple" match with a score of 80.0
+        self.assertEqual(find_best_match("Apple", ["apple"], threshold=70), "apple")
+        # With threshold 100, it should fail
+        self.assertIsNone(find_best_match("Apple", ["apple"], threshold=100))
+
 
 if __name__ == "__main__":
     unittest.main()
