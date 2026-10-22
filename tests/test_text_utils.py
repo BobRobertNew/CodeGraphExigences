@@ -324,5 +324,17 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+    def test_find_best_match_threshold_zero_dissimilar(self):
+        # threshold=0 means even 0.0 match score is accepted
+        choices = ["xyz"]
+        self.assertEqual(find_best_match("abc", choices, threshold=0), "xyz")
+
+    def test_find_best_match_with_score_threshold_zero_dissimilar(self):
+        choices = ["xyz"]
+        match, score = find_best_match_with_score("abc", choices, threshold=0)
+        self.assertEqual(match, "xyz")
+        self.assertEqual(score, 0.0)
+
+
 if __name__ == "__main__":
     unittest.main()
