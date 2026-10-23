@@ -323,6 +323,18 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_threshold_zero_dissimilar_strings(self):
+        # rapidfuzz extractOne can return 0.0 for completely dissimilar strings
+        # If threshold is 0, it should be considered a valid match.
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("xyz", choices, threshold=0), "apple")
+
+    def test_find_best_match_with_score_threshold_zero_dissimilar_strings(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("xyz", choices, threshold=0)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
