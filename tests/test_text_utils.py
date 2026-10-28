@@ -323,6 +323,16 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(match)
         self.assertIsNone(score)
 
+    def test_find_best_match_dissimilar_threshold_zero(self):
+        choices = ["abc"]
+        self.assertEqual(find_best_match("xyz", choices, threshold=0), "abc")
+
+    def test_find_best_match_with_score_dissimilar_threshold_zero(self):
+        choices = ["abc"]
+        match, score = find_best_match_with_score("xyz", choices, threshold=0)
+        self.assertEqual(match, "abc")
+        self.assertEqual(score, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
