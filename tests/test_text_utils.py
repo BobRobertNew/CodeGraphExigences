@@ -324,5 +324,32 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+
+    def test_find_best_match_threshold_zero_dissimilar(self):
+        choices = ["apple", "banana"]
+        self.assertEqual(find_best_match("xyz", choices, threshold=0), "apple")
+
+    def test_find_best_match_with_score_threshold_zero_dissimilar(self):
+        choices = ["apple", "banana"]
+        match, score = find_best_match_with_score("xyz", choices, threshold=0)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 0.0)
+
+
+    def test_find_best_match_early_return_empty_choices(self):
+        self.assertIsNone(find_best_match("apple", []))
+
+    def test_find_best_match_early_return_empty_query(self):
+        self.assertIsNone(find_best_match("", ["apple", "banana"]))
+
+    def test_find_best_match_early_return_none_query(self):
+        self.assertIsNone(find_best_match(None, ["apple", "banana"]))
+
+    def test_find_best_match_just_below_default_threshold(self):
+        # Ensure a match below the default 70 threshold returns None
+        choices = ["apple", "banana"]
+        # "xylophone" against "apple" scores 36.0, well below the 70 default threshold
+        self.assertIsNone(find_best_match("xylophone", choices))
+
 if __name__ == "__main__":
     unittest.main()
