@@ -324,5 +324,20 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+    def test_find_best_match_dissimilar_strings_with_zero_threshold(self):
+        # Completely dissimilar strings give a score of 0.0 in rapidfuzz.
+        # With threshold=0, this satisfies the score >= threshold condition.
+        # rapidfuzz returns the first choice by default.
+        self.assertEqual(find_best_match("xyz", ["apple", "banana"], threshold=0), "apple")
+
+    def test_find_best_match_empty_query_edge_case(self):
+        self.assertIsNone(find_best_match("", ["apple", "banana"]))
+
+    def test_find_best_match_empty_choices_edge_case(self):
+        self.assertIsNone(find_best_match("apple", []))
+
+    def test_find_best_match_no_match_above_threshold_edge_case(self):
+        self.assertIsNone(find_best_match("xyz", ["apple", "banana"], threshold=70))
+
 if __name__ == "__main__":
     unittest.main()
