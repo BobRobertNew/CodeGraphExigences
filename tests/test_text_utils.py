@@ -324,5 +324,18 @@ class TestTextUtils(unittest.TestCase):
         self.assertIsNone(score)
 
 
+
+    @patch("graph_tool.utils.text_utils.process.extractOne")
+    def test_find_best_match_dissimilar_zero_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 0.0, 0)
+        self.assertEqual(find_best_match("banana", ["apple"], threshold=0), "apple")
+
+    @patch("graph_tool.utils.text_utils.process.extractOne")
+    def test_find_best_match_with_score_dissimilar_zero_threshold(self, mock_extractOne):
+        mock_extractOne.return_value = ("apple", 0.0, 0)
+        match, score = find_best_match_with_score("banana", ["apple"], threshold=0)
+        self.assertEqual(match, "apple")
+        self.assertEqual(score, 0.0)
+
 if __name__ == "__main__":
     unittest.main()
